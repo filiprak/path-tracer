@@ -12,13 +12,14 @@ bool viewInit(int width, int height) {
 	if (!glfwInit())
 		return false;
 
-	window = glfwCreateWindow(width, height, "Hello World", NULL, NULL);
+	window = glfwCreateWindow(width, height, "path-tracer", NULL, NULL);
 	if (!window) {
 		glfwTerminate();
 		return false;
 	}
 
 	glfwMakeContextCurrent(window);
+	glfwSetKeyCallback(window, viewKeyCallback);
 }
 
 void viewLoop() {
@@ -41,4 +42,10 @@ void viewLoop() {
 void viewErrCallback(int error, const char* description)
 {
 	fprintf(stderr, "Error: %s\n", description);
+}
+
+static void viewKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, GL_TRUE);
 }
