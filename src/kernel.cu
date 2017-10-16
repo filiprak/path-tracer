@@ -1,5 +1,6 @@
 
 #include "view.h"
+#include "world.h"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include "cudaUtility.h"
@@ -11,11 +12,13 @@
 
 // temp image memory
 static glm::vec3* dev_image = NULL;
+static Ray* prim_rays = NULL;
 
 __host__
 void kernelCleanUp()
 {
 	cudaFree(dev_image);
+	cudaFree(prim_rays);
 }
 
 __host__
@@ -25,6 +28,9 @@ void kernelInit()
 
 	cudaMalloc(&dev_image, pixel_num * sizeof(glm::vec3));
 	cudaMemset(dev_image, 0, pixel_num * sizeof(glm::vec3));
+
+	cudaMalloc(&prim_rays, pixel_num * sizeof(Ray));
+	cudaMemset(prim_rays, 0, pixel_num * sizeof(Ray));
 }
 
 __host__ __device__
@@ -76,6 +82,34 @@ void writeImageToPBO(uchar4* pbo, int width, int height, int iter, glm::vec3* de
 	}
 }
 
+// Init primary rays
+__global__
+void kernelPrimaryRays(Camera cam, Ray* rays)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+	if (x < cam.projection.width && y < cam.projection.height) {
+		int index = x + (y * cam.projection.width);
+
+		float perPixel = 2.0f / (float)cam.projection.height;
+		float halfScreenHeight = 1.0f;
+		float halfScreenWidth = 1.0f * (float)cam.projection.width / (float)cam.projection.height;
+
+		glm::vec3 screenDistanceVec = cam.projection.viewer_dist * glm::normalize(cam.direction);
+		glm::vec3 pixVector = (halfScreenWidth - x * perPixel - perPixel / 2.0f) * glm::normalize(glm::cross(cam.up, cam.direction)) +
+			(halfScreenHeight - y * perPixel - perPixel / 2.0f) * glm::normalize(cam.up);
+
+		rays[index].direction = glm::normalize(screenDistanceVec + pixVector);
+		if ((x == 0 && y == 0) || (x == 0 && y == 749) || (x == 999 && y == 0) || (x == 999 && y == 749)) {
+			printf("\nRay(%d, %d) = [%.9f, %.9f, %.9f]\n  pixVector = [%f, %f, %f]\n\n",
+				x, y, rays[index].direction.x, rays[index].direction.y, rays[index].direction.z,
+				pixVector.x, pixVector.y, pixVector.z);
+		}
+		rays[index].originPoint = cam.position;
+	}
+}
+
 // Helper function for using CUDA to add vectors in parallel.
 __host__
 cudaError_t kernelMain(uchar4* pbo, int iter)
@@ -87,11 +121,18 @@ cudaError_t kernelMain(uchar4* pbo, int iter)
 		(viewWidth + blockSize.x - 1) / blockSize.x,
 		(viewHeight + blockSize.y - 1) / blockSize.y);
 
+	if (iter == 0) {
+		Camera cam = createCamera();
+
+		kernelPrimaryRays << <blocksPerGrid, blockSize >> >(cam, prim_rays);
+		checkCudaError("run kernelPrimaryRays<<< >>>()");
+	}
+
 	writeImageToPBO << <blocksPerGrid, blockSize >> >(pbo, viewWidth, viewHeight, iter, dev_image);
 	checkCudaError("run sendImageToPBO<<< >>>()");
     
     cudaDeviceSynchronize();
-	checkCudaError("sendImageToPBO<<< >>>()");
+	checkCudaError("kernelMain<<< >>>()");
 
     return cudaGetLastError();
 }

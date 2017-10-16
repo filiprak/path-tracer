@@ -1,4 +1,4 @@
-#include "shaderUtils.h"
+#include "shaderUtility.h"
 #include <fstream>
 
 namespace ShaderUtils {

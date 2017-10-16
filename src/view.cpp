@@ -1,6 +1,6 @@
 #include "main.h"
 #include "view.h"
-#include "shaderUtils.h"
+#include "shaderUtility.h"
 
 // default shaders paths
 const char* shaderVertDefault = "shaders/default.vert";
