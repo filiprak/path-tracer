@@ -31,12 +31,17 @@ set(GLEW_LIBRARY_DIR "${CMAKE_LIBRARY_PATH}")
 add_definitions(-DGLEW_STATIC)
 find_package(GLEW)
 
+set(ASSIMP_INCLUDE_DIR "${EXTERNAL}/include")
+set(ASSIMP_LOADER_LIBRARY_DIR "${CMAKE_LIBRARY_PATH}")
+find_library(ASSIMP_LOADER_LIBRARY "assimp-vc120-mt" HINTS "${ASSIMP_LOADER_LIBRARY_DIR}")
+
 find_package(OpenGL)
 
 set(CORELIBS
     "${GLFW_LIBRARY}"
     "${OPENGL_LIBRARY}"
     "${GLEW_LIBRARY}"
+	"${ASSIMP_LOADER_LIBRARY}"
     )
 
 # Enable C++11 for host code
@@ -44,6 +49,8 @@ set(CMAKE_CXX_STANDARD 11)
 
 # Enable CUDA debug info in debug mode builds
 list(APPEND CUDA_NVCC_FLAGS_DEBUG -G -g)
+
+# Specify CUDA compute capability
 list(APPEND CUDA_NVCC_FLAGS -arch=sm_30)
 
 # Linux-specific hacks/fixes
@@ -64,6 +71,7 @@ set(SRC_PATH "src")
 # set up source files
 file(GLOB_RECURSE SOURCES
     "${SRC_PATH}/*.h"
+	"${SRC_PATH}/*.hpp"
     "${SRC_PATH}/*.cpp"
 	"${SRC_PATH}/*.cu"
 )

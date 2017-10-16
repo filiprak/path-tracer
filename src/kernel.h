@@ -2,4 +2,6 @@
 
 #include <cuda_runtime.h>
 
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
+cudaError_t kernelMain(uchar4* pbo, int iter);
+void kernelInit();
+void kernelCleanUp();

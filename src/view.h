@@ -1,11 +1,18 @@
 #pragma once
 
+#include <GL/glew.h>
 #include <GLFW\glfw3.h>
 
+#include <cuda_gl_interop.h>
 
-bool viewInit(int width, int height);
+extern GLuint viewPBO_id;
+extern GLuint viewWidth, viewHeight;
+
+bool viewInit();
 
 void viewLoop();
+
+void runCUDA(int iter);
 
 void viewErrCallback(int error, const char* description);
 

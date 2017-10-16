@@ -1,27 +1,27 @@
 #include "main.h"
 #include "view.h"
+#include "cudaUtility.h"
 
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 
 int main() {
 	printf("Starting path-tracer application.\n");
+	int dvNum = printCudaDevicesInfo();
+	if (dvNum < 1) {
+		printf("CUDA devices not found.\nPlease ensure you have it installed.");
+	}
 
-	Assimp::Importer imp;
+	// Choose which GPU to run on, change this on a multi-GPU system.
+	int cuda_device_id = 0;
+	cudaSetDevice(cuda_device_id);
+	if (checkCudaError("Unable to set CUDA device"))
+		exit(EXIT_FAILURE);
 
-	const aiScene* scene = imp.ReadFile("teapot.obj",
-		aiProcess_CalcTangentSpace |
-		aiProcess_Triangulate |
-		aiProcess_JoinIdenticalVertices |
-		aiProcess_SortByPType);
-	
-	if (scene)
-		printf("Loaded scene from file using assimp.");
 
-	viewInit(300, 300);
+	printf("Initializing preview window...\n");
+	viewInit();
 
+	printf("Starting preview loop...\n");
 	viewLoop();
 
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
