@@ -1,5 +1,6 @@
 #include "main.h"
 #include "view.h"
+#include "world.h"
 #include "cudaUtility.h"
 
 
@@ -20,8 +21,15 @@ int main() {
 	printf("Initializing preview window...\n");
 	viewInit();
 
+	printf("Initializing world elements...\n");
+	worldInit();
+	printf("Camera: %d, %d\n", scene.camera.projection.width, scene.camera.projection.height);
 	printf("Starting preview loop...\n");
 	viewLoop();
 
 	exit(EXIT_SUCCESS);
 }
+
+void printSep() {
+	 printf("------------------------------------------------------------\n");
+};

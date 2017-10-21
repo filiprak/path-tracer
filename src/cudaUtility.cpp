@@ -1,13 +1,13 @@
-
+#include "main.h"
 #include <cuda_runtime.h>
-#include <stdio.h>
+
 
 int printCudaDevicesInfo() {
 	int nDevices;
 
 	cudaGetDeviceCount(&nDevices);
 	printf("Detected CUDA devices:\n");
-	printf("------------------------------------------------------------\n");
+	printSep();
 	for (int i = 0; i < nDevices; i++) {
 		cudaDeviceProp prop;
 		cudaGetDeviceProperties(&prop, i);
@@ -20,7 +20,7 @@ int printCudaDevicesInfo() {
 		printf("  Memory Bus Width (bits): %d\n", prop.memoryBusWidth);
 		printf("  Peak Memory Bandwidth (GB/s): %f\n\n", 2.0*prop.memoryClockRate*(prop.memoryBusWidth / 8) / 1.0e6);
 	}
-	printf("------------------------------------------------------------\n");
+	printSep();
 	return nDevices;
 }
 

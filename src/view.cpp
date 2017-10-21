@@ -1,6 +1,11 @@
-#include "main.h"
+﻿#include "main.h"
 #include "view.h"
+#include "world.h"
+#include "camera.h"
+#include "config.h"
 #include "shaderUtility.h"
+#include "cudaUtility.h"
+//#include <GL\gl.h>
 
 // default shaders paths
 const char* shaderVertDefault = "shaders/default.vert";
@@ -8,12 +13,22 @@ const char* shaderFragDefault = "shaders/default.frag";
 
 // main rendering view window
 GLFWwindow *window;
-GLuint viewWidth = 1000, viewHeight = 750;
+GLuint viewWidth = 500, viewHeight = 400;
 
 GLuint viewPBO_id;
 struct cudaGraphicsResource* viewPBO_cuda;
 
 GLuint viewTexture_id;
+
+
+void viewPrintGLinfo() {
+	// get GL info
+	const GLubyte* version = glGetString(GL_VERSION);
+	const GLubyte* renderer = glGetString(GL_RENDERER);
+	printSep();
+	printf("OpenGL version: %s\nPreview image renderer: %s\n", (const char*)version, (const char*)renderer);
+	printSep();
+}
 
 GLuint viewInitShader() {
 	GLuint program = glCreateProgram();
@@ -156,10 +171,14 @@ bool viewInit() {
 
 	// use view texture
 	glActiveTexture(GL_TEXTURE0);
+
+	viewPrintGLinfo();
 	return true;
 }
 
 void viewLoop() {
+	char title[48];
+
 	// init cuda kernel
 	kernelInit();
 
@@ -169,6 +188,11 @@ void viewLoop() {
 		glfwPollEvents();
 
 		runCUDA(iter);
+		if (checkCudaError("runCuda()"))
+			break;
+		
+		sprintf(title, "interation: %d", iter);
+		glfwSetWindowTitle(window, title);
 
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, viewPBO_id);
 		glBindTexture(GL_TEXTURE_2D, viewTexture_id);
@@ -196,8 +220,26 @@ void viewErrCallback(int error, const char* description)
 
 static void viewKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, GL_TRUE);
+	Camera& cam = scene.camera;
+	if (action == GLFW_PRESS) {
+		switch (key) {
+			case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window, GL_TRUE);
+
+			case GLFW_KEY_DOWN:   rotateVCamera(-CAM_ROTATE_ANGLE_DELTA); break;
+			case GLFW_KEY_UP:     rotateVCamera(CAM_ROTATE_ANGLE_DELTA); break;
+			case GLFW_KEY_RIGHT:  rotateHCamera(CAM_ROTATE_ANGLE_DELTA); break;
+			case GLFW_KEY_LEFT:   rotateHCamera(-CAM_ROTATE_ANGLE_DELTA); break;
+
+			case GLFW_KEY_A:      moveCamera(glm::vec3(-CAM_MOVE_DISTANCE_DELTA, .0, .0)); break;
+			case GLFW_KEY_D:      moveCamera(glm::vec3(CAM_MOVE_DISTANCE_DELTA, .0, .0)); break;
+
+			case GLFW_KEY_W:      moveCamera(glm::vec3(.0, CAM_MOVE_DISTANCE_DELTA, .0)); break;
+			case GLFW_KEY_S:      moveCamera(glm::vec3(.0, -CAM_MOVE_DISTANCE_DELTA, .0)); break;
+
+			case GLFW_KEY_Z:      moveCamera(glm::vec3(.0, .0, CAM_MOVE_DISTANCE_DELTA)); break;
+			case GLFW_KEY_X:      moveCamera(glm::vec3(.0, .0, -CAM_MOVE_DISTANCE_DELTA)); break;
+		}
+	}
 }
 
 void runCUDA(int iter) {

@@ -1,8 +1,10 @@
 #pragma once
 
 #include "world.h"
+#include "cuda_runtime.h"
 
 /* Möller–Trumbore ray-triangle intersection algorithm */
+__device__ __host__
 bool rayIntersectsTriangle(Ray ray, Triangle triangle, glm::vec3& result)
 {
 	const float EPSILON = 0.0000001;
@@ -38,4 +40,38 @@ bool rayIntersectsTriangle(Ray ray, Triangle triangle, glm::vec3& result)
 	}
 	else // This means that there is a line intersection but not a ray intersection.
 		return false;
+}
+
+__device__ __host__
+bool rayIntersectsObject(Ray ray, WorldObject obj, glm::vec3& result) {
+	int indices_len = sizeof(obj.indices);
+
+	glm::vec3 closest_inters_point;
+	float closest_dist = HUGE_VALF;
+
+	bool intersects = false;
+
+	for (int i = 0; i < 36; i = i + 3) {
+		Triangle t;
+		t.a = obj.vertices[obj.indices[i]];
+		t.b = obj.vertices[obj.indices[i + 1]];
+		t.c = obj.vertices[obj.indices[i + 2]];
+		
+		/*printf("Testing intersection: \ntriangle:\n[%f, %f, %f\n%f, %f, %f\n%f, %f, %f]\n x \nray[%f, %f, %f]",
+			t.a.x, t.a.y, t.a.z, t.b.x, t.b.y, t.b.z, t.c.x, t.c.y, t.c.z, ray.originPoint.x, ray.originPoint.x, ray.originPoint.x);*/
+
+		glm::vec3 inters_point;
+		bool triangle_intersects = rayIntersectsTriangle(ray, t, inters_point);
+		if (triangle_intersects)
+			intersects = true;
+		// check if point is closest to viewer
+		if (triangle_intersects && glm::length(inters_point - ray.originPoint) < closest_dist) {
+			closest_dist = (inters_point - ray.originPoint).length();
+			closest_inters_point = inters_point;
+			//printf("Intersects triangle: [%d, %d, %d]\n", obj.indices[i], obj.indices[i + 1], obj.indices[i + 2]);
+		}
+	}
+
+	result = closest_inters_point;
+	return intersects;
 }

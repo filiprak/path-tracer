@@ -74,6 +74,7 @@ file(GLOB_RECURSE SOURCES
 	"${SRC_PATH}/*.hpp"
     "${SRC_PATH}/*.cpp"
 	"${SRC_PATH}/*.cu"
+	"${SRC_PATH}/*.cuh"
 )
 
 cuda_add_executable(${CMAKE_PROJECT_NAME}
