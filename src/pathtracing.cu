@@ -109,7 +109,7 @@ void traceRays(Scene scene, Ray* primary_rays, float3* image)
 __host__
 void runPathTracing()
 {
-	const int blockSideLength = 8;
+	const int blockSideLength = 24;
 	const dim3 blockSize(blockSideLength, blockSideLength);
 	const dim3 blocksPerGrid(
 		(viewWidth + blockSize.x - 1) / blockSize.x,
@@ -123,6 +123,6 @@ void runPathTracing()
 	}
 
 	traceRays << <blocksPerGrid, blockSize >> >(scene, prim_rays, dev_image);
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 	checkCudaError("traceRays<<<>>>()");
 }

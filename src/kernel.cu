@@ -29,7 +29,6 @@ __host__
 void kernelCleanUp()
 {
 	cleanUpPathTracing();
-
 	cudaFree(dev_image);
 }
 

@@ -22,7 +22,7 @@ bool rayIntersectsTriangle(Ray& ray, float3& va, float3& vb, float3& vc, float3&
 	if (a > -EPSILON && a < EPSILON)
 		return false;
 
-	float f = 1 / a;
+	float f = __fdividef(1.0, a);
 	float3 s = ray.originPoint - va;
 	float u = f * (dot(s, h));
 	if (u < 0.0 || u > 1.0)
@@ -59,11 +59,14 @@ bool rayIntersectsObject(Ray& ray, WorldObject& obj, float3& result, Triangle& t
 		TriangleMesh& mesh = obj.meshes[m];
 		Triangle* triangles = mesh.triangles;
 
-		for (int t = 0; t < min(1000, mesh.num_triangles); ++t) {
+		for (int t = 0; t < mesh.num_triangles; ++t) {
 			Triangle& trg = triangles[t];
 			/*printf("Testing intersection: triangle:[%f,%f,%f] X ray[%f, %f, %f]\n",
 				trg.a.x, trg.b.y, trg.c.z, ray.direction.x, ray.direction.y, ray.direction.z);*/
 			
+			if (dot(normalize(ray.direction), normalize(trg.norm_a)) > -0.00001)
+				continue;
+
 			float3 inters_point;
 			bool triangle_intersects = rayIntersectsTriangle(ray,
 				trg.a,

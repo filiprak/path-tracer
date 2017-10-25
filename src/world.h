@@ -51,6 +51,9 @@ typedef struct {
 	float3 originPoint;
 	float3 direction;
 
+	bool active;
+	float3 color;
+
 } Ray;
 
 
