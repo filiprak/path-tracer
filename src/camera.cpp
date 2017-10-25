@@ -2,41 +2,52 @@
 #include "world.h"
 #include "view.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include "cutil_math.h"
+#include "glm/glm.hpp"
 #include <glm/gtx/rotate_vector.hpp>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+#include "stdio.h"
 
 void initCamera() {
 	Camera& c = scene.camera;
 
-	c.direction = glm::normalize(glm::vec3(0.0, 0.0, -1.0));
-	c.position = glm::vec3(0.0, 0.0, 7.0);
-	c.up = glm::normalize(glm::vec3(0.0, 1.0, 0.0));
+	c.direction = normalize(make_float3(0.0, 0.0, -1.0));
+	c.position = make_float3(0.0, 0.0, 3.0);
+	c.up = normalize(make_float3(0.0, 1.0, 0.0));
+	c.right = normalize(cross(c.up, c.direction));
 
 	c.projection.width = viewWidth;
 	c.projection.height = viewHeight;
 	c.projection.viewer_dist = 3.0f;
 
-	c.viewMat = glm::lookAt(c.position, c.position + c.direction, c.up);
 	c.changed = false;
 }
 
-void moveCamera(glm::vec3 diff) {
+float3 rotate_float3(float3 vec, float radians, float3 normal) {
+	return cosf(radians) * vec + sinf(radians) * cross(normalize(normal), vec);
+}
+
+float degToRad(float degrees) {
+	return (degrees / 180.0) * M_PI;
+}
+
+void moveCamera(float3 diff) {
 	scene.camera.position += diff;
 	scene.camera.changed = true;
 }
 
 void rotateVCamera(float degrees) {
 	Camera& c = scene.camera;
-	glm::vec3 rotaxis = glm::normalize(glm::cross(c.direction, c.up));
-	c.direction = glm::normalize(glm::rotate(c.direction, glm::radians(degrees), rotaxis));
-	c.up = glm::normalize(glm::rotate(c.up, glm::radians(degrees), rotaxis));
+	c.direction = normalize(rotate_float3(c.direction, degToRad(degrees), c.right));
+	c.up = normalize(cross(c.direction, c.right));
 	c.changed = true;
 }
 
 void rotateHCamera(float degrees) {
 	Camera& c = scene.camera;
-	glm::vec3 rotaxis = glm::normalize(c.up);
-	c.direction = glm::normalize(glm::rotate(c.direction, glm::radians(degrees), rotaxis));
+	c.direction = normalize(rotate_float3(c.direction, degToRad(degrees), c.up));
+	c.right = normalize(cross(c.up, c.direction));
 	c.changed = true;
 }

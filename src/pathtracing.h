@@ -8,7 +8,7 @@ __global__
 void generatePrimaryRays(Camera cam, Ray* rays);
 
 __global__
-void traceRays(Camera cam, WorldObject* wobjs, Ray* primary_rays, glm::vec3* image);
+void traceRays(Camera cam, WorldObject* wobjs, Ray* primary_rays, float3* image);
 
 __host__
 void initPathTracing();

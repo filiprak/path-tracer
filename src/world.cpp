@@ -1,4 +1,5 @@
 #include "world.h"
+#include "world_load.h"
 #include "view.h"
 #include "camera.h"
 
@@ -12,4 +13,5 @@ void sceneInit() {
 
 void worldInit() {
 	sceneInit();
+	loadSceneWorldObjects();
 }

@@ -13,34 +13,43 @@ typedef enum {
 } Material;
 
 typedef struct {
-	glm::vec3 a, b, c;
+	float3 a,b,c;
+	float3 norm_a, norm_b, norm_c;
+
 } Triangle;
 
-/* Mesh structure - default cube mesh */
+typedef struct {
+	Triangle* triangles;
+	int num_triangles;
+
+} TriangleMesh;
+
+/* WorldObject structure */
 typedef struct {
 	Material materialType;
 
+	
 	glm::mat4 transformMat;
 	glm::mat4 inversedTransMat;
 
-	glm::vec3 vertices[8];
-	int indices[36];
-	Triangle* triangles;
+	TriangleMesh* meshes;
+	int num_meshes;
 
 } WorldObject;
 
 /* Scene structure */
 typedef struct {
 	Camera camera;
-	WorldObject* objects;
+	WorldObject* dv_wobjects_ptr;
+	int num_wobjects;
 
 } Scene;
 
 
 /* Ray structure */
 typedef struct {
-	glm::vec3 originPoint;
-	glm::vec3 direction;
+	float3 originPoint;
+	float3 direction;
 
 } Ray;
 

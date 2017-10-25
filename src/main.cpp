@@ -4,11 +4,20 @@
 #include "cudaUtility.h"
 
 
-int main() {
+std::string scenefile;
+
+
+int main(int argc, char* argv[]) {
+	if (argc > 1)
+		scenefile = std::string(argv[1]);
+	else
+		scenefile = std::string("C:/Users/raqu/git/path-tracer/scenes/teapot.obj");
+
 	printf("Starting path-tracer application.\n");
 	int dvNum = printCudaDevicesInfo();
 	if (dvNum < 1) {
 		printf("CUDA devices not found.\nPlease ensure you have it installed.");
+		exit(EXIT_FAILURE);
 	}
 
 	// Choose which GPU to run on, change this on a multi-GPU system.
@@ -23,10 +32,11 @@ int main() {
 
 	printf("Initializing world elements...\n");
 	worldInit();
-	printf("Camera: %d, %d\n", scene.camera.projection.width, scene.camera.projection.height);
+
+	printSep();
 	printf("Starting preview loop...\n");
 	viewLoop();
-
+	printf("Exiting program...\n");
 	exit(EXIT_SUCCESS);
 }
 

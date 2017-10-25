@@ -5,7 +5,6 @@
 #include "config.h"
 #include "shaderUtility.h"
 #include "cudaUtility.h"
-//#include <GL\gl.h>
 
 // default shaders paths
 const char* shaderVertDefault = "shaders/default.vert";
@@ -13,7 +12,7 @@ const char* shaderFragDefault = "shaders/default.frag";
 
 // main rendering view window
 GLFWwindow *window;
-GLuint viewWidth = 500, viewHeight = 400;
+GLuint viewWidth = 400, viewHeight = 300;
 
 GLuint viewPBO_id;
 struct cudaGraphicsResource* viewPBO_cuda;
@@ -225,19 +224,19 @@ static void viewKeyCallback(GLFWwindow* window, int key, int scancode, int actio
 		switch (key) {
 			case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window, GL_TRUE);
 
-			case GLFW_KEY_DOWN:   rotateVCamera(-CAM_ROTATE_ANGLE_DELTA); break;
-			case GLFW_KEY_UP:     rotateVCamera(CAM_ROTATE_ANGLE_DELTA); break;
+			case GLFW_KEY_DOWN:   rotateVCamera(CAM_ROTATE_ANGLE_DELTA); break;
+			case GLFW_KEY_UP:     rotateVCamera(-CAM_ROTATE_ANGLE_DELTA); break;
 			case GLFW_KEY_RIGHT:  rotateHCamera(CAM_ROTATE_ANGLE_DELTA); break;
 			case GLFW_KEY_LEFT:   rotateHCamera(-CAM_ROTATE_ANGLE_DELTA); break;
 
-			case GLFW_KEY_A:      moveCamera(glm::vec3(-CAM_MOVE_DISTANCE_DELTA, .0, .0)); break;
-			case GLFW_KEY_D:      moveCamera(glm::vec3(CAM_MOVE_DISTANCE_DELTA, .0, .0)); break;
+			case GLFW_KEY_A:      moveCamera(make_float3(CAM_MOVE_DISTANCE_DELTA, .0, .0)); break;
+			case GLFW_KEY_D:      moveCamera(make_float3(-CAM_MOVE_DISTANCE_DELTA, .0, .0)); break;
 
-			case GLFW_KEY_W:      moveCamera(glm::vec3(.0, CAM_MOVE_DISTANCE_DELTA, .0)); break;
-			case GLFW_KEY_S:      moveCamera(glm::vec3(.0, -CAM_MOVE_DISTANCE_DELTA, .0)); break;
+			case GLFW_KEY_W:      moveCamera(make_float3(.0, CAM_MOVE_DISTANCE_DELTA, .0)); break;
+			case GLFW_KEY_S:      moveCamera(make_float3(.0, -CAM_MOVE_DISTANCE_DELTA, .0)); break;
 
-			case GLFW_KEY_Z:      moveCamera(glm::vec3(.0, .0, CAM_MOVE_DISTANCE_DELTA)); break;
-			case GLFW_KEY_X:      moveCamera(glm::vec3(.0, .0, -CAM_MOVE_DISTANCE_DELTA)); break;
+			case GLFW_KEY_Z:      moveCamera(make_float3(.0, .0, CAM_MOVE_DISTANCE_DELTA)); break;
+			case GLFW_KEY_X:      moveCamera(make_float3(.0, .0, -CAM_MOVE_DISTANCE_DELTA)); break;
 		}
 	}
 }

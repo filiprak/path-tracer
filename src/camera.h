@@ -1,15 +1,14 @@
 #pragma once
 
 #include <glm\glm.hpp>
-
+#include "vector_types.h"
 
 /* Camera structure */
 typedef struct {
-	glm::vec3 position;
-	glm::vec3 direction;
-	glm::vec3 up;
-
-	glm::mat4 viewMat;
+	float3 position;
+	float3 direction;
+	float3 up;
+	float3 right;
 
 	struct {
 		int width, height;
@@ -24,7 +23,7 @@ typedef struct {
 
 void initCamera();
 
-void moveCamera(glm::vec3 diff);
+void moveCamera(float3 diff);
 
 void rotateVCamera(float degrees);
 void rotateHCamera(float degrees);

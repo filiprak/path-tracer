@@ -12,15 +12,15 @@
 #include <cstdlib>
 #include <thrust/random.h>
 
-glm::vec3* dev_image = NULL;
+float3* dev_image = NULL;
 
 __host__
 void kernelInit()
 {
 	int pixel_num = viewWidth * viewHeight;
 
-	cudaMalloc(&dev_image, pixel_num * sizeof(glm::vec3));
-	cudaMemset(dev_image, 0, pixel_num * sizeof(glm::vec3));
+	cudaMalloc(&dev_image, pixel_num * sizeof(float3));
+	cudaMemset(dev_image, 0, pixel_num * sizeof(float3));
 
 	initPathTracing();
 }
@@ -52,7 +52,7 @@ thrust::default_random_engine makeSeededRandomEngine(int iter, int index, int de
 
 //Kernel that writes the image to the OpenGL PBO directly.
 __global__
-void writeImageToPBO(uchar4* pbo, int width, int height, int iter, glm::vec3* dev_image) {
+void writeImageToPBO(uchar4* pbo, int width, int height, int iter, float3* dev_image) {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
@@ -92,7 +92,7 @@ cudaError_t kernelMain(uchar4* pbo, int iter)
 		checkCudaError("run runPathTracing()");
 	}
 
-	writeImageToPBO << <blocksPerGrid, blockSize >> >(pbo, viewWidth, viewHeight, iter, dev_image);
+	writeImageToPBO <<<blocksPerGrid, blockSize>>>(pbo, viewWidth, viewHeight, iter, dev_image);
 	checkCudaError("run sendImageToPBO<<<>>>()");
     
     cudaDeviceSynchronize();
