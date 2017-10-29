@@ -28,7 +28,7 @@ typedef struct alignMem(16) {
 } Material;
 
 
-typedef struct {
+typedef struct alignMem(16) {
 	float3 a,b,c;
 	float3 norm_a, norm_b, norm_c;
 

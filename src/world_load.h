@@ -3,6 +3,12 @@
 #include "world.h"
 #include <string>
 
+/* glm */
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+
 #define MAX_OBJECTS_NUM		32
 #define OBJECTS_TYPES_NUM	2
 
@@ -47,6 +53,8 @@ typedef struct {
 typedef struct {
 	Material material;
 	char src_filename[128];
+
+	glm::mat4 transform;
 
 } TriangleMeshObjInfo;
 

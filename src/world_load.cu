@@ -9,6 +9,7 @@
 #include <assimp/postprocess.h>
 
 #include "cudaUtility.h"
+#include "cutil_math.h"
 
 WorldObjectsSources world_obj_sources;
 
@@ -31,8 +32,8 @@ void initWorldObjSources() {
 	lightmat.type = Luminescent;
 	SphereObjInfo* sphere = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
 	sphere->material = lightmat;
-	sphere->position = make_float3(0.0, 0.0, 1.0);
-	sphere->radius = 0.6f;
+	sphere->position = make_float3(0.0, 0.0, 0.0);
+	sphere->radius = 0.2f;
 	world_obj_sources.sources[0].worldObjectInfo = sphere;
 
 	// init light sphere
@@ -42,8 +43,8 @@ void initWorldObjSources() {
 	lightmat1.type = Luminescent;
 	SphereObjInfo* sphere1 = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
 	sphere1->material = lightmat1;
-	sphere1->position = make_float3(1.0, 1.0, 1.0);
-	sphere1->radius = 0.4f;
+	sphere1->position = make_float3(0.0, 0.0, 0.0);
+	sphere1->radius = 1.4f;
 	world_obj_sources.sources[1].worldObjectInfo = sphere1;
 
 	// init cube mesh
@@ -53,6 +54,12 @@ void initWorldObjSources() {
 	cubemat.type = Diffusing;
 	TriangleMeshObjInfo* cube = (TriangleMeshObjInfo*)malloc(sizeof(TriangleMeshObjInfo));
 	cube->material = cubemat;
+
+	glm::mat4 trans;
+	trans = glm::scale(trans, glm::vec3(2, 2, 2));
+	trans = glm::translate(trans, glm::vec3(-0.5, -0.5, -0.5));
+	
+	cube->transform = trans;
 	strcpy(cube->src_filename, "C:/Users/raqu/git/path-tracer/scenes/cube.obj");
 	world_obj_sources.sources[2].worldObjectInfo = cube;
 }
@@ -67,7 +74,7 @@ void freeWorldObjSources() {
 }
 
 __host__
-Triangle* loadTriangles(const aiMesh* mesh) {
+Triangle* loadTriangles(const aiMesh* mesh, glm::mat4 transform) {
 	if (mesh == NULL)
 		return NULL;
 
@@ -83,9 +90,15 @@ Triangle* loadTriangles(const aiMesh* mesh) {
 		aiVector3D& va = mesh->mVertices[face.mIndices[0]];
 		aiVector3D& vb = mesh->mVertices[face.mIndices[1]];
 		aiVector3D& vc = mesh->mVertices[face.mIndices[2]];
-		tr_ptr[i].a = make_float3(va.x, va.y, va.z);
-		tr_ptr[i].b = make_float3(vb.x, vb.y, vb.z);
-		tr_ptr[i].c = make_float3(vc.x, vc.y, vc.z);
+
+		// transform using glm
+		glm::vec4 ga = transform * glm::vec4(va.x, va.y, va.z, 1.0f);
+		glm::vec4 gb = transform * glm::vec4(vb.x, vb.y, vb.z, 1.0f);
+		glm::vec4 gc = transform * glm::vec4(vc.x, vc.y, vc.z, 1.0f);
+
+		tr_ptr[i].a = make_float3(ga.x, ga.y, ga.z);
+		tr_ptr[i].b = make_float3(gb.x, gb.y, gb.z);
+		tr_ptr[i].c = make_float3(gc.x, gc.y, gc.z);
 		printf("triangles[%d]=[%f,%f,%f]\n", i, tr_ptr[i].a.x, tr_ptr[i].b.x, tr_ptr[i].c.x);
 		if (mesh->HasNormals()) {
 			aiVector3D& normal0 = mesh->mNormals[face.mIndices[0]];
@@ -134,7 +147,7 @@ float3* loadVertices(const aiMesh* mesh) {
 }*/
 
 __host__
-TriangleMesh* loadTriangleMeshes(const aiScene* scene) {
+TriangleMesh* loadTriangleMeshes(const aiScene* scene, glm::mat4 transform) {
 	if (scene == NULL)
 		return NULL;
 
@@ -148,7 +161,7 @@ TriangleMesh* loadTriangleMeshes(const aiScene* scene) {
 	for (int i = 0; i < num_meshes; ++i) {
 		aiMesh* mesh = scene->mMeshes[i];
 		tm_ptr[i].num_triangles = mesh->mNumFaces;
-		tm_ptr[i].triangles = loadTriangles(mesh);
+		tm_ptr[i].triangles = loadTriangles(mesh, transform);
 	}
 
 	cudaOk(cudaMalloc(&dv_tm_ptr, num_meshes * sizeof(TriangleMesh)));
@@ -196,12 +209,10 @@ bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 		return false;
 	}
 
-	int num_meshes = aiscene != NULL ? aiscene->mNumMeshes : 0;
-	
 	MeshGeometryData* gptr = (MeshGeometryData*)malloc(sizeof(MeshGeometryData));
 	MeshGeometryData* dv_gptr = NULL;
 	gptr->num_meshes = aiscene->mNumMeshes;
-	gptr->meshes = loadTriangleMeshes(aiscene);
+	gptr->meshes = loadTriangleMeshes(aiscene, info->transform);
 
 	cudaOk(cudaMalloc(&dv_gptr, sizeof(MeshGeometryData)));
 	result.type = TriangleMeshObj;
