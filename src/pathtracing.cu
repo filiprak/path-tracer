@@ -21,11 +21,12 @@ void generatePrimaryRays(Camera cam, Ray* rays);
 // Init pathtracing
 __host__
 void initPathTracing() {
+	loadSceneWorldObjects();
 
 	int pixel_num = viewWidth * viewHeight;
 
-	cudaMalloc(&prim_rays, pixel_num * sizeof(Ray));
-	cudaMemset(prim_rays, 0, pixel_num * sizeof(Ray));
+	cudaOk(cudaMalloc(&prim_rays, pixel_num * sizeof(Ray)));
+	cudaOk(cudaMemset(prim_rays, 0, pixel_num * sizeof(Ray)));
 
 	const int blockSideLength = 8;
 	const dim3 blockSize(blockSideLength, blockSideLength);
@@ -41,7 +42,7 @@ void initPathTracing() {
 __host__
 void cleanUpPathTracing()
 {
-	cudaFree(prim_rays);
+	cudaOk(cudaFree(prim_rays));
 	freeWorldObjects();
 }
 
@@ -86,20 +87,16 @@ void traceRays(Scene scene, Ray* primary_rays, float3* image)
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
 	Camera& cam = scene.camera;
+	
 
 	if (x < cam.projection.width && y < cam.projection.height) {
 		int index = x + (y * cam.projection.width);
 
-		float3 inters_point;
-		Triangle itr;
-		if (rayIntersectsObject(primary_rays[index], scene.dv_wobjects_ptr[0], inters_point, itr)) {
-			float dotp = -dot(normalize(primary_rays[index].direction), normalize(itr.norm_a));
-			if (dotp >= 0.0 && dotp <= 1.0)
-				image[index] = make_float3(255.0 * dotp);
-			else if (dotp < 0.0 && dotp >= -1.0)
-				image[index] = make_float3(0.0, 255.0 * (-dotp), 0.0);
-			else 
-				image[index] = make_float3(255.0, 0.0, 0.0);
+		float4 rec_color;
+
+		if (rayIntersectsScene(primary_rays[index], scene, rec_color)) {
+			image[index] = make_float3(rec_color.x, rec_color.y, rec_color.z);
+
 		} else {
 			image[index] = make_float3(0.0);
 		}
@@ -109,6 +106,8 @@ void traceRays(Scene scene, Ray* primary_rays, float3* image)
 __host__
 void runPathTracing()
 {
+	cuassert(scene.dv_wobjects_ptr != NULL);
+
 	const int blockSideLength = 24;
 	const dim3 blockSize(blockSideLength, blockSideLength);
 	const dim3 blocksPerGrid(
@@ -119,10 +118,11 @@ void runPathTracing()
 		generatePrimaryRays << <blocksPerGrid, blockSize >> >(scene.camera, prim_rays);
 		cudaDeviceSynchronize();
 		checkCudaError("generatePrimaryRays<<<>>>()");
+
 		scene.camera.changed = false;
 	}
 
 	traceRays << <blocksPerGrid, blockSize >> >(scene, prim_rays, dev_image);
-	//cudaDeviceSynchronize();
+	cudaDeviceSynchronize();
 	checkCudaError("traceRays<<<>>>()");
 }

@@ -13,5 +13,4 @@ void sceneInit() {
 
 void worldInit() {
 	sceneInit();
-	loadSceneWorldObjects();
 }

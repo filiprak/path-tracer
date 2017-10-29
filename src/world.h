@@ -1,16 +1,32 @@
 #pragma once
 
+#include "main.h"
 #include "camera.h"
 #include <glm\glm.hpp>
 
 
+/* World Object types, important: dont reorder values */
+typedef enum {
+	SphereObj = 0,
+	TriangleMeshObj
+
+} WorldObjType;
+
 /* Material types */
 typedef enum {
-	Light,
-	Reflecting,
-	Diffuse
+	Luminescent = 0,
+	Reflective,
+	Diffusing
+
+} MaterialType;
+
+typedef struct alignMem(16) {
+	MaterialType type;
+	float4 color;
+	float4 emittance;
 
 } Material;
+
 
 typedef struct {
 	float3 a,b,c;
@@ -19,30 +35,38 @@ typedef struct {
 } Triangle;
 
 typedef struct {
+	float4 color;
+
 	Triangle* triangles;
 	int num_triangles;
 
 } TriangleMesh;
 
-/* WorldObject structure */
 typedef struct {
-	Material materialType;
-
-	
-	glm::mat4 transformMat;
-	glm::mat4 inversedTransMat;
-
 	TriangleMesh* meshes;
 	int num_meshes;
+
+} MeshGeometryData;
+
+typedef struct {
+	float radius;
+	float3 position;
+
+} SphereGeometryData;
+
+/* WorldObject structure */
+typedef struct alignMem(16) {
+	WorldObjType type;
+	Material material;
+	void* geometry_data;
 
 } WorldObject;
 
 /* Scene structure */
 typedef struct {
-	Camera camera;
 	WorldObject* dv_wobjects_ptr;
 	int num_wobjects;
-
+	Camera camera;
 } Scene;
 
 
