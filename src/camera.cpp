@@ -6,9 +6,9 @@
 #include "glm/glm.hpp"
 #include <glm/gtx/rotate_vector.hpp>
 
-#define _USE_MATH_DEFINES
-#include <math.h>
+#include "constants.h"
 #include "stdio.h"
+
 
 void initCamera() {
 	Camera& c = scene.camera;
@@ -30,7 +30,7 @@ float3 rotate_float3(float3 vec, float radians, float3 normal) {
 }
 
 float degToRad(float degrees) {
-	return (degrees / 180.0) * M_PI;
+	return (degrees / 180.0) * PI_f;
 }
 
 void moveCamera(float3 diff) {

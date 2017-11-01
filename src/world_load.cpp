@@ -29,11 +29,12 @@ void initWorldObjSources() {
 	world_obj_sources.sources[0].type = SphereObj;
 	Material lightmat;
 	lightmat.color = make_float3(255.0, 145.0, 50.0);
-	lightmat.type = Diffusing;
+	lightmat.norm_color = lightmat.color / 255.0f;
+	lightmat.type = Reflective;
 	lightmat.emittance = make_float3(2550.0f);
 	SphereObjInfo* sphere = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
 	sphere->material = lightmat;
-	sphere->position = make_float3(4.0, 1.6, 0.0);
+	sphere->position = make_float3(3.0, 1.6, 1.0);
 	sphere->radius = 1.3f;
 	world_obj_sources.sources[0].worldObjectInfo = sphere;
 
@@ -41,18 +42,20 @@ void initWorldObjSources() {
 	world_obj_sources.sources[1].type = SphereObj;
 	Material lightmat1;
 	lightmat1.color = make_float3(250.0, 230.0, 20.0);
+	lightmat1.norm_color = lightmat1.color / 255.0f;
 	lightmat1.type = Luminescent;
 	lightmat1.emittance = make_float3(1000.0f);
 	SphereObjInfo* sphere1 = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
 	sphere1->material = lightmat1;
-	sphere1->position = make_float3(0.0, 10.0, 0.0);
-	sphere1->radius = 5.0f;
+	sphere1->position = make_float3(0.0, 15.0, 0.0);
+	sphere1->radius = 10.0f;
 	world_obj_sources.sources[1].worldObjectInfo = sphere1;
 
 	// init cube mesh
 	world_obj_sources.sources[2].type = TriangleMeshObj;
 	Material cubemat;
 	cubemat.color = make_float3(10.0, 128.0, 255.0);
+	cubemat.norm_color = cubemat.color / 255.0f;
 	cubemat.type = Diffusing;
 	TriangleMeshObjInfo* cube = (TriangleMeshObjInfo*)malloc(sizeof(TriangleMeshObjInfo));
 	cube->material = cubemat;
@@ -69,12 +72,13 @@ void initWorldObjSources() {
 	world_obj_sources.sources[3].type = TriangleMeshObj;
 	Material cubemat2;
 	cubemat2.color = make_float3(204.0, 9.0, 102.0);
-	cubemat2.type = Diffusing;
+	cubemat2.norm_color = cubemat2.color / 255.0f;
+	cubemat2.type = Reflective;
 	TriangleMeshObjInfo* cube2 = (TriangleMeshObjInfo*)malloc(sizeof(TriangleMeshObjInfo));
 	cube2->material = cubemat2;
 
 	glm::mat4 trans2;
-	trans2 = glm::translate(trans2, glm::vec3(-3, 2, -3));
+	trans2 = glm::translate(trans2, glm::vec3(0, 2, -3));
 	trans2 = glm::scale(trans2, glm::vec3(3));
 	trans2 = glm::translate(trans2, glm::vec3(-0.5, -0.5, -0.5));
 

@@ -6,12 +6,18 @@
 #include "world.h"
 #include "curand_kernel.h"
 #include "intersect.cuh"
+#include "constants.h"
 
 __device__
 float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 {
+	// result radiance for primary ray
 	float3 radiance = make_float3(0.0f);
+
+	// color mask
 	float3 mask = make_float3(1.0f, 1.0f, 1.0f);
+
+	// copy primary ray instance
 	Ray ray = prim_ray;
 
 	// bounce ray
@@ -24,6 +30,8 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 
 		// take hit object reference
 		WorldObject& obj = scene.dv_wobjects_ptr[inters_obj_idx];
+
+		// shading pixels -------------------------------------------------
 		//return obj.material.color * abs(dot(surf_normal, ray.direction));
 		if (obj.material.type == Luminescent) {
 			// add light object emmited energy
@@ -31,23 +39,47 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 			break;
 		}
 			
-
 		if (obj.material.type == Diffusing) {
 
-			float r1 = 2 * 3.141592 * curand_uniform(curand_s);
+			float r1 = PI_X2_f * curand_uniform(curand_s);
 			float r2 = curand_uniform(curand_s);
-			float r2s = sqrtf(r2);
+			float r2s = __fsqrt_rn(r2);
 
-			float3 w = surf_normal;
-			float3 u = normalize(cross((fabs(w.x) > .1 ? make_float3(0, 1, 0) : make_float3(1, 0, 0)), w));
-			float3 v = cross(w, u);
+			float3 u = normalize(cross((fabsf(surf_normal.x) > .1 ? make_float3(0, 1, 0) : make_float3(1, 0, 0)), surf_normal));
+			float3 v = cross(surf_normal, u);
 
-			ray.direction = normalize(u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrtf(1 - r2));
+			float sinr1, cosr1;
+			__sincosf(r1, &sinr1, &cosr1);
 
-			ray.originPoint = surf_normal * 0.03f + inters_point;
+			ray.direction = normalize(u * cosr1 * r2s + v * sinr1*r2s + surf_normal * __fsqrt_rn(1 - r2));
+			ray.originPoint = inters_point;
 
 			// mask color object
-			mask *= (obj.material.color * abs(dot(ray.direction, surf_normal)) / 255.0f);
+			mask *= (obj.material.norm_color);
+		}
+
+		if (obj.material.type == Reflective){
+			float r2 = curand_uniform(curand_s);
+			if (r2 > 0.5) {
+				float r1 = PI_X2_f * curand_uniform(curand_s);
+				float r2s = __fsqrt_rn(r2);
+
+				float3 u = normalize(cross((fabsf(surf_normal.x) > .1 ? make_float3(0, 1, 0) : make_float3(1, 0, 0)), surf_normal));
+				float3 v = cross(surf_normal, u);
+
+				float sinr1, cosr1;
+				__sincosf(r1, &sinr1, &cosr1);
+
+				ray.direction = normalize(u * cosr1 * r2s + v * sinr1*r2s + surf_normal * __fsqrt_rn(1 - r2));
+				ray.originPoint = inters_point;
+			}
+			else {
+				ray.direction = normalize(reflect(ray.direction, surf_normal));
+				ray.originPoint = inters_point;
+			}
+
+			// mask color object
+			mask *= (obj.material.norm_color);
 		}
 
 	}

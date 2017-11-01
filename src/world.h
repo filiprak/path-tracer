@@ -22,7 +22,7 @@ typedef enum {
 
 typedef struct alignMem(16) {
 	MaterialType type;
-	float3 color;
+	float3 color, norm_color;
 	float3 emittance;
 
 } Material;
@@ -74,7 +74,6 @@ typedef struct {
 	float3 direction;
 
 	bool active;
-	float3 color;
 
 } Ray;
 
