@@ -60,7 +60,7 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 
 		if (obj.material.type == Reflective){
 			float r2 = curand_uniform(curand_s);
-			if (r2 > 0.5) {
+			if (r2 > 0.8) {
 				float r1 = PI_X2_f * curand_uniform(curand_s);
 				float r2s = __fsqrt_rn(r2);
 

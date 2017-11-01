@@ -34,19 +34,19 @@ typedef struct alignMem(16) {
 
 } Triangle;
 
-typedef struct {
+typedef struct alignMem(16) {
 	Triangle* triangles;
 	int num_triangles;
 
 } TriangleMesh;
 
-typedef struct {
+typedef struct alignMem(16) {
 	TriangleMesh* meshes;
 	int num_meshes;
 
 } MeshGeometryData;
 
-typedef struct {
+typedef struct alignMem(16) {
 	float radius;
 	float3 position;
 
@@ -69,7 +69,7 @@ typedef struct {
 
 
 /* Ray structure */
-typedef struct {
+typedef struct alignMem(16) {
 	float3 originPoint;
 	float3 direction;
 

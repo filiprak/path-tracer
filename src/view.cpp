@@ -5,6 +5,7 @@
 #include "config.h"
 #include "shaderUtility.h"
 #include "cudaUtility.h"
+#include <time.h>
 
 // default shaders paths
 const char* shaderVertDefault = "shaders/default.vert";
@@ -187,11 +188,13 @@ void viewLoop() {
 		glfwPollEvents();
 		if (scene.camera.changed)
 			iter = 1;
+		clock_t begin = clock();
 		runCUDA(iter);
+		clock_t end = clock();
 		if (checkCudaError("runCuda()"))
 			break;
 		
-		sprintf(title, "interation: %d", iter);
+		sprintf_s(title, "Iter: %d [ %.3f s ]", iter, (double)(end - begin) / CLOCKS_PER_SEC);
 		glfwSetWindowTitle(window, title);
 
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, viewPBO_id);

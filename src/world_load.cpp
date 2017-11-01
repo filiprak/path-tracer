@@ -47,7 +47,7 @@ void initWorldObjSources() {
 	lightmat1.emittance = make_float3(1000.0f);
 	SphereObjInfo* sphere1 = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
 	sphere1->material = lightmat1;
-	sphere1->position = make_float3(0.0, 15.0, 0.0);
+	sphere1->position = make_float3(0.0, 20.0, 0.0);
 	sphere1->radius = 10.0f;
 	world_obj_sources.sources[1].worldObjectInfo = sphere1;
 
@@ -78,9 +78,9 @@ void initWorldObjSources() {
 	cube2->material = cubemat2;
 
 	glm::mat4 trans2;
-	trans2 = glm::translate(trans2, glm::vec3(0, 2, -3));
-	trans2 = glm::scale(trans2, glm::vec3(3));
-	trans2 = glm::translate(trans2, glm::vec3(-0.5, -0.5, -0.5));
+	trans2 = glm::translate(trans2, glm::vec3(-2, 3, 0));
+	trans2 = glm::scale(trans2, glm::vec3(2));
+	//trans2 = glm::translate(trans2, glm::vec3(-0.5, -0.5, -0.5));
 
 	cube2->transform = trans2;
 	strcpy(cube2->src_filename, "C:/Users/raqu/git/path-tracer/scenes/cube.obj");
