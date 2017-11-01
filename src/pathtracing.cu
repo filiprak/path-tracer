@@ -1,11 +1,12 @@
-#include "pathtracing.h"
+#include "pathtracing.cuh"
 #include "kernel.h"
 #include "stdio.h"
 #include "view.h"
-#include "intersect.h"
+#include "radiance.cuh"
 #include "cudaUtility.h"
 #include "world_load.h"
 #include "cutil_math.h"
+#include "utility.cuh"
 
 // memory
 static Ray* prim_rays = NULL;
@@ -79,32 +80,40 @@ void generatePrimaryRays(Camera cam, Ray* rays)
 	}
 }
 
+// init random number generator
+__device__
+void initRandomCuda(int iterHash, curandState& randState) {
+	int threadId = (blockIdx.x + blockIdx.y * gridDim.x) * (blockDim.x * blockDim.y)
+		+ (threadIdx.y * blockDim.x) + threadIdx.x;
+
+	curand_init(iterHash + threadId, 0, 0, &randState);
+}
+
 // Trace rays
 __global__
-void traceRays(Scene scene, Ray* primary_rays, float3* image)
+void tracePaths(int iterHash, Scene scene, Ray* primary_rays, float4* acc_image)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
 	Camera& cam = scene.camera;
 	
-
 	if (x < cam.projection.width && y < cam.projection.height) {
 		int index = x + (y * cam.projection.width);
 
-		float4 rec_color;
+		// init random number generator
+		curandState curand_state;
+		initRandomCuda(iterHash, curand_state);
 
-		if (rayIntersectsScene(primary_rays[index], scene, rec_color)) {
-			image[index] = make_float3(rec_color.x, rec_color.y, rec_color.z);
+		// gather radiance from rays path for current pixel
+		float4 radiance = make_float4(gatherRadiance(primary_rays[index], scene, &curand_state));
 
-		} else {
-			image[index] = make_float3(0.0);
-		}
+		acc_image[index] += radiance;
 	}
 }
 
 __host__
-void runPathTracing()
+void runPathTracing(int iterHash)
 {
 	cuassert(scene.dv_wobjects_ptr != NULL);
 
@@ -122,7 +131,7 @@ void runPathTracing()
 		scene.camera.changed = false;
 	}
 
-	traceRays << <blocksPerGrid, blockSize >> >(scene, prim_rays, dev_image);
+	tracePaths << <blocksPerGrid, blockSize >> >(iterHash, scene, prim_rays, device_accum_image);
 	cudaDeviceSynchronize();
 	checkCudaError("traceRays<<<>>>()");
 }

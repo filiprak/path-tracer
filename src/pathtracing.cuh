@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "cuda_runtime.h"
 
+
 __global__
 void generatePrimaryRays(Camera cam, Ray* rays);
 
@@ -17,4 +18,4 @@ __host__
 void cleanUpPathTracing();
 
 __host__
-void runPathTracing();
+void runPathTracing(int iterHash);

@@ -181,11 +181,12 @@ void viewLoop() {
 	// init cuda kernel
 	kernelInit();
 
-	int iter = 0;
+	int iter = 1;
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-
+		if (scene.camera.changed)
+			iter = 1;
 		runCUDA(iter);
 		if (checkCudaError("runCuda()"))
 			break;
@@ -202,7 +203,9 @@ void viewLoop() {
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 		glfwSwapBuffers(window);
 
-		iter = (iter + 1) % 100000000;
+		iter++;
+		if (iter > 50000)
+			break;
 	}
 	// clean cuda kernel
 	kernelCleanUp();
@@ -245,10 +248,11 @@ void runCUDA(int iter) {
 	uchar4 *pbo_dptr = NULL;
 	size_t num_bytes;
 
+	// map buffer object
 	cudaGraphicsMapResources(1, &viewPBO_cuda, 0);
 	cudaGraphicsResourceGetMappedPointer((void**)&pbo_dptr, &num_bytes, viewPBO_cuda);
 
-	// execute the kernel
+	// execute the kernel - start device code execution
 	kernelMain(pbo_dptr, iter);
 
 	// unmap buffer object

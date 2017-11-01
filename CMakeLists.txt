@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.0)
 
 project(path-tracer)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 # Set up include and lib paths

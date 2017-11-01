@@ -23,45 +23,64 @@ void initWorldObjSources() {
 	world_obj_sources.loadFuncMapping[TriangleMeshObj] = loadTriangleMeshObj;
 	
 	// create world objects - compose our scene
-	scene.num_wobjects = world_obj_sources.num_objects = 3;
+	scene.num_wobjects = world_obj_sources.num_objects = 4;
 	
 	// init light sphere
 	world_obj_sources.sources[0].type = SphereObj;
 	Material lightmat;
-	lightmat.color = make_float4(255.0, 145.0, 0, 0.0);
-	lightmat.type = Luminescent;
+	lightmat.color = make_float3(255.0, 145.0, 50.0);
+	lightmat.type = Diffusing;
+	lightmat.emittance = make_float3(2550.0f);
 	SphereObjInfo* sphere = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
 	sphere->material = lightmat;
-	sphere->position = make_float3(0.0, 0.0, 0.0);
-	sphere->radius = 0.2f;
+	sphere->position = make_float3(4.0, 1.6, 0.0);
+	sphere->radius = 1.3f;
 	world_obj_sources.sources[0].worldObjectInfo = sphere;
 
 	// init light sphere
 	world_obj_sources.sources[1].type = SphereObj;
 	Material lightmat1;
-	lightmat1.color = make_float4(0.0, 230.0, 0, 0.0);
+	lightmat1.color = make_float3(250.0, 230.0, 20.0);
 	lightmat1.type = Luminescent;
+	lightmat1.emittance = make_float3(1000.0f);
 	SphereObjInfo* sphere1 = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
 	sphere1->material = lightmat1;
-	sphere1->position = make_float3(0.0, 0.0, 0.0);
-	sphere1->radius = 1.4f;
+	sphere1->position = make_float3(0.0, 10.0, 0.0);
+	sphere1->radius = 5.0f;
 	world_obj_sources.sources[1].worldObjectInfo = sphere1;
 
 	// init cube mesh
 	world_obj_sources.sources[2].type = TriangleMeshObj;
 	Material cubemat;
-	cubemat.color = make_float4(0.0, 0.0, 255.0, 0.0);
+	cubemat.color = make_float3(10.0, 128.0, 255.0);
 	cubemat.type = Diffusing;
 	TriangleMeshObjInfo* cube = (TriangleMeshObjInfo*)malloc(sizeof(TriangleMeshObjInfo));
 	cube->material = cubemat;
 
 	glm::mat4 trans;
-	trans = glm::scale(trans, glm::vec3(2, 2, 2));
+	trans = glm::scale(trans, glm::vec3(20, 0.2, 20));
 	trans = glm::translate(trans, glm::vec3(-0.5, -0.5, -0.5));
 	
 	cube->transform = trans;
 	strcpy(cube->src_filename, "C:/Users/raqu/git/path-tracer/scenes/cube.obj");
 	world_obj_sources.sources[2].worldObjectInfo = cube;
+
+	// init cube mesh 2
+	world_obj_sources.sources[3].type = TriangleMeshObj;
+	Material cubemat2;
+	cubemat2.color = make_float3(204.0, 9.0, 102.0);
+	cubemat2.type = Diffusing;
+	TriangleMeshObjInfo* cube2 = (TriangleMeshObjInfo*)malloc(sizeof(TriangleMeshObjInfo));
+	cube2->material = cubemat2;
+
+	glm::mat4 trans2;
+	trans2 = glm::translate(trans2, glm::vec3(-3, 2, -3));
+	trans2 = glm::scale(trans2, glm::vec3(3));
+	trans2 = glm::translate(trans2, glm::vec3(-0.5, -0.5, -0.5));
+
+	cube2->transform = trans2;
+	strcpy(cube2->src_filename, "C:/Users/raqu/git/path-tracer/scenes/cube.obj");
+	world_obj_sources.sources[3].worldObjectInfo = cube2;
 }
 
 void freeWorldObjSources() {
@@ -146,7 +165,6 @@ float3* loadVertices(const aiMesh* mesh) {
 	return dv_vrt_ptr;
 }*/
 
-__host__
 TriangleMesh* loadTriangleMeshes(const aiScene* scene, glm::mat4 transform) {
 	if (scene == NULL)
 		return NULL;
@@ -170,7 +188,6 @@ TriangleMesh* loadTriangleMeshes(const aiScene* scene, glm::mat4 transform) {
 	return dv_tm_ptr;
 }
 
-__host__
 bool loadSphereObj(void* objInfo, WorldObject& result) {
 	SphereObjInfo* info = (SphereObjInfo*)objInfo;
 
@@ -192,7 +209,6 @@ bool loadSphereObj(void* objInfo, WorldObject& result) {
 	return true;
 }
 
-__host__
 bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 	TriangleMeshObjInfo* info = (TriangleMeshObjInfo*)objInfo;
 
@@ -227,7 +243,6 @@ bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 	return true;
 }
 
-__host__
 WorldObject* loadWorldObjects() {
 	
 	WorldObject* wo_ptr;
@@ -251,7 +266,6 @@ WorldObject* loadWorldObjects() {
 	return dv_wo_ptr;
 }
 
-__host__
 void loadSceneWorldObjects() {
 	printf("Sizeof: %s = %d\n\n", "WorldObject", sizeof(WorldObject));
 	printf("Sizeof: %s = %d\n", "MeshGeometryData", sizeof(MeshGeometryData));
@@ -268,7 +282,6 @@ void loadSceneWorldObjects() {
 	scene.dv_wobjects_ptr = loadWorldObjects();
 }
 
-__host__
 void freeWorldObjects() {
 	for (int i = 0; i < dv_mem_ptrs.size(); ++i) {
 		cudaOk(cudaFree(dv_mem_ptrs[i]));

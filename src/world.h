@@ -22,8 +22,8 @@ typedef enum {
 
 typedef struct alignMem(16) {
 	MaterialType type;
-	float4 color;
-	float4 emittance;
+	float3 color;
+	float3 emittance;
 
 } Material;
 
@@ -35,8 +35,6 @@ typedef struct alignMem(16) {
 } Triangle;
 
 typedef struct {
-	float4 color;
-
 	Triangle* triangles;
 	int num_triangles;
 

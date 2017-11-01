@@ -46,7 +46,7 @@ bool rayIntersectsTriangle(Ray& ray, float3& va, float3& vb, float3& vc, float& 
 }
 
 __device__
-bool testSphereIntersection(Ray& ray, WorldObject& obj, float& res_dist, float& hit_angle_cos) {
+bool testSphereIntersection(Ray& ray, WorldObject& obj, float3& hit_point, float3& hit_norm) {
 	SphereGeometryData* gdata = (SphereGeometryData*)obj.geometry_data;
 	float rad = gdata->radius;
 
@@ -65,17 +65,15 @@ bool testSphereIntersection(Ray& ray, WorldObject& obj, float& res_dist, float& 
 	if (t < epsilon)
 		return false;
 
-	/* calculate cosine of angle between ray and normal to surface */
-	float3 hitpoint = ray.originPoint + ray.direction * t;
-	float3 normal = normalize(hitpoint - gdata->position);
-	hit_angle_cos = dot(normal, ray.direction) * -1.0f;
-	res_dist = t;
+	/* calculate hit point and normal to surface */
+	hit_point = ray.originPoint + ray.direction * t;
+	hit_norm = normalize(hit_point - gdata->position);
 
 	return true;
 }
 
 __device__
-bool testTriangleMeshIntersection(Ray& ray, WorldObject& obj, float& res_dist, float& hit_angle_cos) {
+bool testTriangleMeshIntersection(Ray& ray, WorldObject& obj, float3& hit_point, float3& hit_norm) {
 	MeshGeometryData* gdata = (MeshGeometryData*)obj.geometry_data;
 
 	float closest_dist = HUGE_VALF;
@@ -105,47 +103,49 @@ bool testTriangleMeshIntersection(Ray& ray, WorldObject& obj, float& res_dist, f
 			// check if point is closest to viewer
 			if (triangle_intersects && inters_dist < closest_dist) {
 				closest_dist = inters_dist;
-				hit_angle_cos = res_hit_angle_cos;
+				hit_norm = trg.norm_a;
 			}
 		}
 	}
-
-	res_dist = closest_dist;
+	if (intersects) {
+		hit_point = ray.originPoint + closest_dist * ray.direction;
+	}
 	return intersects;
 }
 
 __device__
-bool rayIntersectsObject(Ray& ray, WorldObject& obj, float& res_dist, float& hit_angle_cos) {
+bool rayIntersectsObject(Ray& ray, WorldObject& obj, float3& hit_point, float3& hit_norm) {
 	bool intersects = false;
 
 	if (obj.type == SphereObj) {
-		intersects = testSphereIntersection(ray, obj, res_dist, hit_angle_cos);
+		intersects = testSphereIntersection(ray, obj, hit_point, hit_norm);
 	}
 	else if (obj.type == TriangleMeshObj) {
-		intersects = testTriangleMeshIntersection(ray, obj, res_dist, hit_angle_cos);
+		intersects = testTriangleMeshIntersection(ray, obj, hit_point, hit_norm);
 	}
 
 	return intersects;
 }
 
 __device__
-bool rayIntersectsScene(Ray& ray, Scene scene, float4& res_color) {
+bool rayIntersectsScene(Ray& ray, Scene& scene, int& res_obj_idx, float3& hit_point, float3& hit_norm) {
 	bool intersects = false;
-	float hit_angle_cos;
 	float closest_dist = HUGE_VALF;
+	float3 inters_point, inters_norm;
 
 	for (int i = 0; i < scene.num_wobjects; ++i) {
 		WorldObject& obj = scene.dv_wobjects_ptr[i];
 
-		float inters_dist;
-		if (rayIntersectsObject(ray, obj, inters_dist, hit_angle_cos)) {
+		if (rayIntersectsObject(ray, obj, inters_point, inters_norm)) {
 			intersects = true;
+			float inters_dist = length(inters_point - ray.originPoint);
 			if (inters_dist < closest_dist) {
 				closest_dist = inters_dist;
-				res_color = abs(hit_angle_cos) * obj.material.color;
+				res_obj_idx = i;
+				hit_point = inters_point;
+				hit_norm = inters_norm;
 			}
 		};
 	}
-
 	return intersects;
 }

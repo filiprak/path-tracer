@@ -14,7 +14,7 @@ void initCamera() {
 	Camera& c = scene.camera;
 
 	c.direction = normalize(make_float3(0.0, 0.0, -1.0));
-	c.position = make_float3(0.0, 0.0, 3.0);
+	c.position = make_float3(1.0, 3.0, 12.0);
 	c.up = normalize(make_float3(0.0, 1.0, 0.0));
 	c.right = normalize(cross(c.up, c.direction));
 
