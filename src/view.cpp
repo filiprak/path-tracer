@@ -5,6 +5,7 @@
 #include "config.h"
 #include "shaderUtility.h"
 #include "cudaUtility.h"
+#include "kernel.h"
 #include <time.h>
 
 // default shaders paths
@@ -186,8 +187,10 @@ void viewLoop() {
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-		if (scene.camera.changed)
+		if (scene.camera.changed) {
 			iter = 1;
+			printCamInfo();
+		}
 		clock_t begin = clock();
 		runCUDA(iter);
 		clock_t end = clock();
@@ -225,26 +228,43 @@ void viewErrCallback(int error, const char* description)
 
 static void viewKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+	printf("viewKeyCallback();\n");
+	int rcontrol_pressed = glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
+	float power = rcontrol_pressed ? 3.0f : 1.0f;
+
 	Camera& cam = scene.camera;
-	if (action == GLFW_PRESS) {
-		switch (key) {
-			case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window, GL_TRUE);
 
-			case GLFW_KEY_DOWN:   rotateVCamera(CAM_ROTATE_ANGLE_DELTA); break;
-			case GLFW_KEY_UP:     rotateVCamera(-CAM_ROTATE_ANGLE_DELTA); break;
-			case GLFW_KEY_RIGHT:  rotateHCamera(CAM_ROTATE_ANGLE_DELTA); break;
-			case GLFW_KEY_LEFT:   rotateHCamera(-CAM_ROTATE_ANGLE_DELTA); break;
-
-			case GLFW_KEY_A:      moveCamera(make_float3(CAM_MOVE_DISTANCE_DELTA, .0, .0)); break;
-			case GLFW_KEY_D:      moveCamera(make_float3(-CAM_MOVE_DISTANCE_DELTA, .0, .0)); break;
-
-			case GLFW_KEY_W:      moveCamera(make_float3(.0, CAM_MOVE_DISTANCE_DELTA, .0)); break;
-			case GLFW_KEY_S:      moveCamera(make_float3(.0, -CAM_MOVE_DISTANCE_DELTA, .0)); break;
-
-			case GLFW_KEY_Z:      moveCamera(make_float3(.0, .0, CAM_MOVE_DISTANCE_DELTA)); break;
-			case GLFW_KEY_X:      moveCamera(make_float3(.0, .0, -CAM_MOVE_DISTANCE_DELTA)); break;
-		}
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+		glfwSetWindowShouldClose(window, GL_TRUE);
+		return;
 	}
+	if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+		resetCamera();
+		return;
+	}
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		rotateVCamera(CAM_ROTATE_ANGLE_DELTA * power);
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		rotateVCamera(-CAM_ROTATE_ANGLE_DELTA * power);
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+		rotateHCamera(CAM_ROTATE_ANGLE_DELTA * power);
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+		rotateHCamera(-CAM_ROTATE_ANGLE_DELTA * power);
+
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		moveCamera(make_float3(CAM_MOVE_DISTANCE_DELTA * power, .0, .0));
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		moveCamera(make_float3(-CAM_MOVE_DISTANCE_DELTA * power, .0, .0));
+
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		moveCamera(make_float3(.0, CAM_MOVE_DISTANCE_DELTA * power, .0));
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		moveCamera(make_float3(.0, -CAM_MOVE_DISTANCE_DELTA * power, .0));
+
+	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
+		moveCamera(make_float3(.0, .0, CAM_MOVE_DISTANCE_DELTA * power));
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
+		moveCamera(make_float3(.0, .0, -CAM_MOVE_DISTANCE_DELTA * power));
 }
 
 void runCUDA(int iter) {

@@ -7,4 +7,4 @@
 						printf("\n>  CUDA RESULT FAIL: %s:%d\n\n",  __FILE__, __LINE__);
 
 int printCudaDevicesInfo();
-bool checkCudaError(const char* context);
+bool checkCudaError(const char*);

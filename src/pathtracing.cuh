@@ -6,10 +6,10 @@
 
 
 __global__
-void generatePrimaryRays(Camera cam, Ray* rays);
+void generatePrimaryRays(Camera, Ray*);
 
 __global__
-void traceRays(Camera cam, WorldObject* wobjs, Ray* primary_rays, float3* image);
+void traceRays(Camera, WorldObject*, Ray*, float3*);
 
 __host__
 void initPathTracing();
@@ -18,4 +18,7 @@ __host__
 void cleanUpPathTracing();
 
 __host__
-void runPathTracing(int iterHash);
+void runPathTracing(int);
+
+__device__
+inline void init_ray(Ray& r, float3& orig, float3& dir);

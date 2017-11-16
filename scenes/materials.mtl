@@ -1,0 +1,6 @@
+# materials.mtl materials
+
+newmtl glass.refractive
+	Ka 1.0 1.0 1.0
+	d 0.2
+	Ni 1.1

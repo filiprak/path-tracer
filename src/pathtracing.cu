@@ -6,7 +6,6 @@
 #include "cudaUtility.h"
 #include "world_load.h"
 #include "cutil_math.h"
-#include "utility.cuh"
 
 // memory
 static Ray* prim_rays = NULL;
@@ -18,6 +17,15 @@ void loadWorldObjects(Camera cam, WorldObject* wobjects);
 __global__
 void generatePrimaryRays(Camera cam, Ray* rays);
 
+__device__
+inline void init_ray(Ray& r, float3& orig, float3& dir) {
+	r.direction = dir;
+	r.originPoint = orig;
+	r.inv_direction = make_float3(1 / dir.x, 1 / dir.y, 1 / dir.z);
+	r.sign[0] = (r.inv_direction.x < 0);
+	r.sign[1] = (r.inv_direction.y < 0);
+	r.sign[2] = (r.inv_direction.z < 0);
+}
 
 // Init pathtracing
 __host__
@@ -66,8 +74,10 @@ void generatePrimaryRays(Camera cam, Ray* rays)
 		float3 pixVector = (halfScreenWidth - x * perPixel - perPixel / 2.0f) * normalize(cross(cam.up, cam.direction)) +
 			(halfScreenHeight - y * perPixel - perPixel / 2.0f) * normalize(cam.up);
 
-		rays[index].direction = normalize(screenDistanceVec + pixVector);
-		if ((x == 0 && y == 0) ||
+		Ray ray;
+		init_ray(ray, cam.position, normalize(screenDistanceVec + pixVector));
+		rays[index] = ray;
+		/*if ((x == 0 && y == 0) ||
 			(x == 0 && y == cam.projection.height - 1) ||
 			(x == cam.projection.width - 1 && y == 0) ||
 			(x == cam.projection.width - 1 && y == cam.projection.height - 1)) {
@@ -75,8 +85,7 @@ void generatePrimaryRays(Camera cam, Ray* rays)
 			printf("\nRay(%d, %d) = [%.9f, %.9f, %.9f]\n  pixVector = [%f, %f, %f]\n\n",
 				x, y, rays[index].direction.x, rays[index].direction.y, rays[index].direction.z,
 				pixVector.x, pixVector.y, pixVector.z);
-		}
-		rays[index].originPoint = cam.position;
+		}*/
 	}
 }
 
@@ -117,7 +126,7 @@ void runPathTracing(int iterHash)
 {
 	cuassert(scene.dv_wobjects_ptr != NULL);
 
-	const int blockSideLength = 24;
+	const int blockSideLength = 8;
 	const dim3 blockSize(blockSideLength, blockSideLength);
 	const dim3 blocksPerGrid(
 		(viewWidth + blockSize.x - 1) / blockSize.x,

@@ -2,7 +2,7 @@
 #include "view.h"
 #include "world.h"
 #include "cudaUtility.h"
-
+#include "kernel.h"
 
 std::string scenefile;
 
@@ -26,6 +26,9 @@ int main(int argc, char* argv[]) {
 	if (checkCudaError("Unable to set CUDA device"))
 		exit(EXIT_FAILURE);
 
+	cudaDeviceSetLimit(cudaLimitStackSize, (size_t) 4096 * 10);
+	if (checkCudaError("Unable to set CUDA device stack size to: %d B\n"))
+		exit(EXIT_FAILURE);
 
 	printf("Initializing preview window...\n");
 	viewInit();

@@ -13,8 +13,8 @@ bool viewInit();
 
 void viewLoop();
 
-void runCUDA(int iter);
+void runCUDA(int);
 
-void viewErrCallback(int error, const char* description);
+void viewErrCallback(int, const char*);
 
-static void viewKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+static void viewKeyCallback(GLFWwindow*, int, int, int, int);

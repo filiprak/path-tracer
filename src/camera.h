@@ -5,10 +5,16 @@
 
 /* Camera structure */
 typedef struct {
+	// init params
+	float3 init_dir, init_up, init_right, init_pos;
+
+	// current params
 	float3 position;
 	float3 direction;
 	float3 up;
 	float3 right;
+
+	float h_ang, v_ang;
 
 	struct {
 		int width, height;
@@ -22,8 +28,11 @@ typedef struct {
 
 
 void initCamera();
+void resetCamera();
 
-void moveCamera(float3 diff);
+void moveCamera(float3);
 
-void rotateVCamera(float degrees);
-void rotateHCamera(float degrees);
+void rotateVCamera(float);
+void rotateHCamera(float);
+
+void printCamInfo();

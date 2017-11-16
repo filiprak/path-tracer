@@ -4,10 +4,9 @@
 #include "view.h"
 #include "world.h"
 #include "camera.h"
-#include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include "cudaUtility.h"
-#include "utility.cuh"
+#include "cutility.cuh"
 #include "cutil_math.h"
 
 #include <stdio.h>

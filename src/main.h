@@ -1,10 +1,6 @@
 #pragma once
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string>
-
-#include "kernel.h"
 
 #if defined(__CUDACC__) // NVCC
 #define alignMem(n) __align__(n)
@@ -15,6 +11,9 @@
 #else
 #error "Please provide a definition for alignMem() macro for your host compiler!"
 #endif
+
+typedef void* dv_ptr;
+
 
 void printSep();
 

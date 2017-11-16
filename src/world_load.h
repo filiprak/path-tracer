@@ -5,8 +5,6 @@
 
 /* glm */
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 
 #define MAX_OBJECTS_NUM		32
@@ -19,10 +17,16 @@ __host__
 void freeWorldObjects();
 
 __host__
-bool loadSphereObj(void* objInfo, WorldObject& result);
+bool loadSphereObj(void*, WorldObject&);
 
 __host__
-bool loadTriangleMeshObj(void* objInfo, WorldObject& result);
+bool loadTriangleMeshObj(void*, WorldObject&);
+
+// kd tree functions
+KDNode* copyKDTreeToCuda(KDNode*);
+void freeKDTree(KDNode*);
+void freeCudaKDTree(KDNode*);
+KDNode* buildKDTree(Triangle*, int*&, int, int);
 
 
 typedef struct {

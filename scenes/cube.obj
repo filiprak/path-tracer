@@ -1,7 +1,8 @@
-# cube.obj
-#
- 
-g cube
+# Blender v2.79 (sub 0) OBJ File: ''
+# www.blender.org
+mtllib materials.mtl
+
+o cube
  
 v  0.0  0.0  0.0
 v  0.0  0.0  1.0
@@ -30,4 +31,6 @@ f  5//5  8//5  6//5
 f  1//4  5//4  6//4 
 f  1//4  6//4  2//4 
 f  2//1  6//1  8//1 
-f  2//1  8//1  4//1 
+f  2//1  8//1  4//1
+
+usemtl glass.refractive
