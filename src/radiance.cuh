@@ -39,12 +39,20 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 	for (int bounce = 0; bounce < MAX_NUM_RAY_BOUNCES; ++bounce) {
 		int inters_obj_idx;
 		float3 inters_point, surf_normal;
-		
+		float3 debug_mask = make_float3(1.0f);
 
-		if (!rayIntersectsScene(ray, scene, inters_obj_idx, inters_point, surf_normal))
-			return make_float3(0.0);
+		if (!rayIntersectsScene(ray, scene, inters_obj_idx, inters_point, surf_normal, debug_mask))
+#ifdef DEBUG_BBOXES
+			return 255.0f * (make_float3(1.0f) - debug_mask);
+#else
+			return make_float3(0);
+#endif
 		
 		Material mat = scene.dv_wobjects_ptr[inters_obj_idx].material;
+#ifdef DEBUG_BBOXES
+		return 0.8 * 255.0f * (make_float3(1.0f) - debug_mask) + 0.2 * mat.color * fabs(dot(ray.direction, surf_normal));
+#endif
+		
 		// take hit object reference
 		/*if (obj.type == TriangleMeshObj) {
 			MeshGeometryData* md = (MeshGeometryData*)obj.geometry_data;
@@ -60,6 +68,7 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 			hit_refractive = obj.material.type == Refractive;
 		if (hit_refractive)
 			debug_path[2 * bounce] = ray.originPoint;*/
+
 		// shading pixels -------------------------------------------------
 		switch (mat.type) {
 

@@ -82,13 +82,13 @@ KDNode* buildKDTree(Triangle* trg_src, int*& trg_idxs, int num_trs, int depth) {
 	node->trg_idxs = trg_idxs;
 	node->num_trgs = num_trs;
 	node->left = node->right = NULL;
-	printf("    Depth: %d, Node: [triangles: %d] ", depth, num_trs);
+	/*printf("    Depth: %d, Node: [triangles: %d] ", depth, num_trs);
 	printf("idx: [");
 	for (int i = 0; i < num_trs; i++)
 	{
 		printf("%d,", trg_idxs[i]);
 	}
-	printf("]\n");
+	printf("]\n");*/
 	// initial cases
 	if (num_trs == 0)
 		return node;
@@ -130,12 +130,11 @@ KDNode* buildKDTree(Triangle* trg_src, int*& trg_idxs, int num_trs, int depth) {
 	int left_size = trg_left_idxs.size();
 	int right_size = trg_right_idxs.size();
 
-	if (left_size > 3) {
+	if (left_size > 6) {
 		int* left_idxs = (int*)malloc(left_size * sizeof(int));
 		memcpy(left_idxs, trg_left_idxs.data(), left_size * sizeof(int));
 		node->left = buildKDTree(trg_src, left_idxs, left_size, depth + 1);
-	}
-	if (right_size > 3) {
+
 		int* right_idxs = (int*)malloc(right_size * sizeof(int));
 		memcpy(right_idxs, trg_right_idxs.data(), right_size * sizeof(int));
 		node->right = buildKDTree(trg_src, right_idxs, right_size, depth + 1);

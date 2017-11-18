@@ -15,7 +15,7 @@ void initCamera() {
 
 	c.init_dir = normalize(make_float3(0.0, 0.0, -1.0));
 	c.init_up = normalize(make_float3(0.0, 1.0, 0.0));
-	c.init_pos = make_float3(0.0, 3.0, 15.0);
+	c.init_pos = make_float3(0.0, 3.0, 9.9);
 	c.init_right = normalize(cross(c.init_up, c.init_dir));
 
 	c.position = c.init_pos;

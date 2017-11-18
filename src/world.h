@@ -3,6 +3,7 @@
 #include "main.h"
 #include "camera.h"
 #include "KDTree.h"
+#include "cuda_runtime.h"
 #include <glm\glm.hpp>
 
 
@@ -44,6 +45,8 @@ typedef struct alignMem(16) {
 	float3 a,b,c;
 	float3 norm_a, norm_b, norm_c;
 
+	float4 x;
+	float4 d;
 } Triangle;
 
 
@@ -78,9 +81,15 @@ typedef alignMem(16) struct KDNode {
 
 
 typedef struct alignMem(16) {
+	// Pointer to tringles data in global memory
 	Triangle* triangles;
-	KDNode* kdroot;
 	int num_triangles;
+
+	// Id of texture where triangles data is stored
+	cudaTextureObject_t triangles_tex;
+	float4* triangle_tex_data;
+
+	KDNode* kdroot;
 
 } MeshGeometryData;
 

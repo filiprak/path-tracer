@@ -16,5 +16,6 @@ typedef void* dv_ptr;
 
 
 void printSep();
+void printProgramConfig();
 
 extern std::string scenefile;

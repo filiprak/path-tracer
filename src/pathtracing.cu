@@ -121,11 +121,33 @@ void tracePaths(int iterHash, Scene scene, Ray* primary_rays, float4* acc_image)
 	}
 }
 
+//DEBUG
+__global__
+void debugTexture(Scene scene) {
+	for (int i = 0; i < scene.num_wobjects; ++i) {
+		WorldObject& obj = scene.dv_wobjects_ptr[i];
+
+		if (obj.type == TriangleMeshObj) {
+			MeshGeometryData* gd = (MeshGeometryData*)obj.geometry_data;
+			int tex = gd->triangles_tex;
+			printf("texture id: %d\n", tex);
+			for (int t = 0; t < gd->num_triangles; t++)
+			{
+				for (int s = 0; s < 6; s++)
+				{
+					float4 a = tex1Dfetch<float4>(tex, 6 * t + s);
+					printf("[%d+%d]: [%f,%f,%f,%f]\n", t, s, a.x, a.y, a.z, a.w);
+				}
+				printf("\n");
+			}
+			return;
+		}
+	}
+}
+
 __host__
 void runPathTracing(int iterHash)
 {
-	cuassert(scene.dv_wobjects_ptr != NULL);
-
 	const int blockSideLength = 8;
 	const dim3 blockSize(blockSideLength, blockSideLength);
 	const dim3 blocksPerGrid(
@@ -136,6 +158,9 @@ void runPathTracing(int iterHash)
 		generatePrimaryRays << <blocksPerGrid, blockSize >> >(scene.camera, prim_rays);
 		cudaDeviceSynchronize();
 		checkCudaError("generatePrimaryRays<<<>>>()");
+
+		/*debugTexture<<<1,1>>>(scene);
+		checkCudaError("debugTexture<<<1,1>>>(scene)");*/
 
 		scene.camera.changed = false;
 	}

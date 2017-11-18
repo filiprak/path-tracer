@@ -183,6 +183,8 @@ void viewLoop() {
 	// init cuda kernel
 	kernelInit();
 
+	printProgramConfig();
+
 	int iter = 1;
 	while (!glfwWindowShouldClose(window))
 	{
