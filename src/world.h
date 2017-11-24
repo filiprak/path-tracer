@@ -24,8 +24,9 @@ typedef enum {
 } MaterialType;
 
 
+#define GLOB_MEM_ALIGNMENT		16
 
-typedef struct alignMem(16) {
+typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 	MaterialType type;
 	float3 color, norm_color;  // mtl: Ka
 
@@ -41,31 +42,21 @@ typedef struct alignMem(16) {
 } Material;
 
 
-typedef struct alignMem(16) {
+typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 	float3 a,b,c;
 	float3 norm_a, norm_b, norm_c;
-
-	float4 x;
-	float4 d;
+	int material_idx;
 } Triangle;
 
 
-typedef struct alignMem(16) {
-	Triangle* triangles;
-	int num_triangles;
-
-	Material material;
-
-} TriangleMesh;
-
 // Axis aligned bounding boxes AABB
-typedef struct alignMem(16) {
+typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 	float3 bounds[2]; // minimal and maximal volume point
 	// bounds[0] - min, bounds[1] - max
 } BBox;
 
 
-typedef alignMem(16) struct KDNode {
+typedef alignMem(GLOB_MEM_ALIGNMENT) struct KDNode {
 	// Bounding box of the tree node
 	BBox bbox;
 
@@ -77,10 +68,15 @@ typedef alignMem(16) struct KDNode {
 	KDNode* left;
 	KDNode*	right;
 
+	// for iterating purposes
+	int idx;
+	int left_idx;
+	int right_idx;
+
 } KDNode;
 
 
-typedef struct alignMem(16) {
+typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 	// Pointer to tringles data in global memory
 	Triangle* triangles;
 	int num_triangles;
@@ -90,11 +86,12 @@ typedef struct alignMem(16) {
 	float4* triangle_tex_data;
 
 	KDNode* kdroot;
+	KDNode* flat_kd_root;
 
 } MeshGeometryData;
 
 
-typedef struct alignMem(16) {
+typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 	float radius;
 	float3 position;
 
@@ -102,9 +99,11 @@ typedef struct alignMem(16) {
 
 
 /* WorldObject structure */
-typedef struct alignMem(16) {
+typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 	WorldObjType type;
-	Material material;
+	Material* materials;
+	int num_materials;
+
 	void* geometry_data;
 
 } WorldObject;
@@ -114,6 +113,7 @@ typedef struct alignMem(16) {
 typedef struct {
 	WorldObject* dv_wobjects_ptr;
 	int num_wobjects;
+
 	Camera camera;
 } Scene;
 
@@ -129,7 +129,7 @@ typedef struct {
 } Ray;
 
 
-void worldInit();
+void worldInit(const Json::Value&);
 
 // global scene object
 extern Scene scene;

@@ -1,6 +1,7 @@
 #include "camera.h"
 #include "world.h"
 #include "view.h"
+#include "config.h"
 
 #include "cutil_math.h"
 #include "glm/glm.hpp"
@@ -8,15 +9,16 @@
 
 #include "constants.h"
 #include "stdio.h"
+#include "jsonResolve.h"
 
 
-void initCamera() {
+void initCamera(const Json::Value& jcam) {
 	Camera& c = scene.camera;
 
-	c.init_dir = normalize(make_float3(0.0, 0.0, -1.0));
-	c.init_up = normalize(make_float3(0.0, 1.0, 0.0));
-	c.init_pos = make_float3(0.0, 3.0, 9.9);
-	c.init_right = normalize(cross(c.init_up, c.init_dir));
+	c.init_dir = normalize(resolveFloat3(jcam["direction"]));
+	c.init_up = normalize(resolveFloat3(jcam["up"]));
+	c.init_pos = resolveFloat3(jcam["position"]);
+	c.init_right = normalize(cross(c.init_dir, c.init_up));
 
 	c.position = c.init_pos;
 	c.direction = c.init_dir;
@@ -25,11 +27,22 @@ void initCamera() {
 
 	c.h_ang = c.v_ang = 0.0f;
 
+	int viewWidth = jcam["pixelWidth"].asInt();
+	int viewHeight = jcam["pixelHeight"].asInt();
+
 	c.projection.width = viewWidth;
 	c.projection.height = viewHeight;
-	c.projection.viewer_dist = 3.0f;
+	c.projection.num_pixels = viewWidth * viewHeight;
+	c.projection.screen_dist = resolveFloat(jcam["screenDist"]);
+
+	float screenHeight = resolveFloat(jcam["screenHeight"]);
+	c.projection.pixel_size = make_float2(screenHeight / (float)viewHeight);
+	c.projection.screen_halfsize.y = screenHeight / 2.0f;
+	c.projection.screen_halfsize.x = c.projection.screen_halfsize.y * (float)viewWidth / (float)viewHeight;
+	c.projection.aa_jitter = 2.0f;
 
 	c.changed = false;
+	c.max_ray_bounces = MAX_NUM_RAY_BOUNCES;
 }
 
 void resetCamera() {
@@ -83,7 +96,28 @@ void rotateHCamera(float degrees) {
 	refreshCamera();
 }
 
+void updateMaxRayBnc(int delta) {
+	Camera& c = scene.camera;
+	int newv = c.max_ray_bounces + delta;
+	if (newv < 0)
+		return;
+	c.max_ray_bounces = newv;
+	c.changed = true;
+}
 
+void updateAajitter(float delta) {
+	Camera& c = scene.camera;
+	float aaj = c.projection.aa_jitter + delta;
+	if (aaj < 0.0)
+		return;
+	c.projection.aa_jitter = aaj;
+	c.changed = true;
+}
+
+void togglePrevMode() {
+	scene.camera.preview_mode = !scene.camera.preview_mode;
+	scene.camera.changed = true;
+}
 
 void printCamInfo() {
 	Camera& c = scene.camera;
@@ -92,8 +126,10 @@ void printCamInfo() {
 	printf("> direction: [%.3f,%.3f,%.3f]\n", c.direction.x, c.direction.y, c.direction.z);
 	printf("> up:        [%.3f,%.3f,%.3f]\n", c.up.x, c.up.y, c.up.z);
 	printf("> right:     [%.3f,%.3f,%.3f]\n", c.right.x, c.right.y, c.right.z);
-	printf("> v_ang:     %f\n", c.v_ang);
-	printf("> h_ang:     %f\n", c.h_ang);
+	printf("> v_ang:            %.3f\n", c.v_ang);
+	printf("> h_ang:            %.3f\n", c.h_ang);
+	printf("> max_ray_bounces:  %d\n", c.max_ray_bounces);
+	printf("> aa ray jitter:    %.3f\n", c.projection.aa_jitter);
 	/* debug
 	printf("> dot(dir,up):        %f\n", dot(c.direction, c.up));
 	printf("> dot(dir,right):     %f\n", dot(c.direction, c.right));

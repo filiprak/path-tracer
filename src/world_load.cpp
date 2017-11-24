@@ -2,6 +2,7 @@
 #include "world_load.h"
 #include "world.h"
 #include "main.h"
+#include "errors.h"
 #include "cuda_runtime.h"
 #include <vector>
 
@@ -10,113 +11,90 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#include "json/json.h"
+#include "world.h"
+#include "jsonResolve.h"
+
 #include "cudaUtility.h"
 #include "cutil_math.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+
 WorldObjectsSources world_obj_sources;
 
-textureReference triangle_texture;
-
+// cuda device resources
 static std::vector<dv_ptr> dv_mem_ptrs;
 static std::vector<cudaTextureObject_t> dv_textures;
 static std::vector<dv_ptr> dv_mem_kdtrees_ptrs;
 
 
-void initWorldObjSources() {
+void initWorldObjSources(const Json::Value& jscene) {
 	// init load handlers
 	world_obj_sources.loadFuncMapping[SphereObj] = loadSphereObj;
 	world_obj_sources.loadFuncMapping[TriangleMeshObj] = loadTriangleMeshObj;
 	
-	// create world objects - compose our scene
-	scene.num_wobjects = world_obj_sources.num_objects = 3;
+	// parse scene from json description
+	int num_objects = min((jscene["objects"].isArray() ? jscene["objects"].size() : 0), MAX_OBJECTS_NUM);
+	scene.num_wobjects = world_obj_sources.num_objects = num_objects;
+
+	for (int i = 0; i < num_objects; i++)
+	{
+		const Json::Value& jobj = jscene["objects"][i];
+		std::string type = jobj["type"].asString();
+
+		if (!type.compare("sphere")) {
+			world_obj_sources.sources[i].type = SphereObj;
+
+			Material msphere;
+			msphere.norm_color = resolveFloat3(jobj["material"]["Ka"]);
+			msphere.color = 255.0f * msphere.norm_color;
+			msphere.type = resolveMatType(jobj["material"]["type"]);
+			msphere.emittance = resolveFloat3(jobj["material"]["Ke"]);
+			msphere.reflect_factor = resolveFloat(jobj["material"]["d"]);
+			msphere.refract_index = resolveFloat(jobj["material"]["Ni"]);
+
+			SphereObjInfo* sinfo = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
+			sinfo->material = msphere;
+			sinfo->position = resolveFloat3(jobj["position"]);
+			sinfo->radius = resolveFloat(jobj["radius"]);
+			world_obj_sources.sources[i].worldObjectInfo = sinfo;
+		}
+		else if (!type.compare("mesh")) {
+			world_obj_sources.sources[i].type = TriangleMeshObj;
+			TriangleMeshObjInfo* minfo = (TriangleMeshObjInfo*)malloc(sizeof(TriangleMeshObjInfo));
+			const char* src = jobj["src"].asCString();
+			strcpy_s(minfo->src_filename, src);
+			
+			glm::mat4 transform;
+			// read transformations
+			if (jobj["transform"].isArray()) {
+				for (int t = 0; t < jobj["transform"].size(); t++)
+				{
+					const Json::Value& jtrans = jobj["transform"][t];
+					if (!jtrans.isObject() || jtrans.size() != 1)
+						continue;
+					std::string trans_type = jtrans.getMemberNames()[0];
+					if (!trans_type.compare("translate"))
+						transform = glm::translate(transform, resolveGlmVec3(jtrans[trans_type]));
+					else if (!trans_type.compare("rotate"))
+						transform = glm::rotate(transform,
+							glm::radians(resolveFloat(jtrans[trans_type][0])),
+							resolveGlmVec3(jtrans[trans_type][1]));
+					else if (!trans_type.compare("scale"))
+						transform = glm::scale(transform, resolveGlmVec3(jtrans[trans_type]));
+				}
+			}
+			minfo->transform = transform;
+			world_obj_sources.sources[i].worldObjectInfo = minfo;
+		}
+		else {
+			freeWorldObjects();
+			throw scene_file_error("Unknown object type, supported types: mesh/sphere");
+		}
+	}
 	
-	// init light sphere
-	/*world_obj_sources.sources[2].type = SphereObj;
-	Material lightmat;
-	lightmat.color = make_float3(50.0, 255.0, 255.0);
-	lightmat.norm_color = lightmat.color / 255.0f;
-	lightmat.type = Diffusing;
-	lightmat.reflect_factor = 0.2;
-	lightmat.refract_index = 1.5f;
-	SphereObjInfo* sphere = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
-	sphere->material = lightmat;
-	sphere->position = make_float3(0, -50.0, 0);
-	sphere->radius = 50.0f;
-	world_obj_sources.sources[2].worldObjectInfo = sphere;*/
-
-	// init light sphere
-	/*world_obj_sources.sources[4].type = SphereObj;
-	Material lightmat3;
-	lightmat3.color = make_float3(255.0, 0.0, 255.0);
-	lightmat3.norm_color = lightmat3.color / 255.0f;
-	lightmat3.emittance = make_float3(255.0f);
-	lightmat3.type = Refractive;
-	lightmat3.reflect_factor = 0.5;
-	lightmat3.refract_index = 1.5f;
-	SphereObjInfo* sphere3 = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
-	sphere3->material = lightmat3;
-	sphere3->position = make_float3(2, 1.3, 1);
-	sphere3->radius = 1.3f;
-	world_obj_sources.sources[4].worldObjectInfo = sphere3;*/
-
-	// init light sphere
-	world_obj_sources.sources[1].type = SphereObj;
-	Material lightmat1;
-	lightmat1.color = make_float3(250.0, 230.0, 20.0);
-	lightmat1.norm_color = lightmat1.color / 255.0f;
-	lightmat1.type = Luminescent;
-	lightmat1.emittance = make_float3(7 * 255.0f);
-	SphereObjInfo* sphere1 = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
-	sphere1->material = lightmat1;
-	sphere1->position = make_float3(0.0, 16.6f, 0.0);
-	sphere1->radius = 7.0f;
-	world_obj_sources.sources[1].worldObjectInfo = sphere1;
-
-	// init cube mesh 2
-	world_obj_sources.sources[2].type = TriangleMeshObj;
-	TriangleMeshObjInfo* glasscube = (TriangleMeshObjInfo*)malloc(sizeof(TriangleMeshObjInfo));
-	Material glasscubemat;
-	glasscubemat.color = make_float3(0, 255.0f, 0);
-	glasscubemat.norm_color = glasscubemat.color / 255.0f;
-	glasscubemat.reflect_factor = 0.2f;
-	glasscubemat.refract_index = 1.3f;
-	glasscubemat.type = Diffusing;
-
-	glm::mat4 transg;//f
-	transg = glm::translate(transg, glm::vec3(0, 0, 0));
-	transg = glm::scale(transg, glm::vec3(0.03));
-	transg = glm::rotate(transg, glm::radians(90.0f), glm::vec3(0, 1, 0));
-	transg = glm::rotate(transg, glm::radians(-90.0f), glm::vec3(1,0,0));
-	//transg = glm::translate(transg, glm::vec3(-0.5, -0.5, -0.5));
-
-	glasscube->transform = transg;
-	glasscube->material = glasscubemat;
-	strcpy(glasscube->src_filename, "C:/Users/raqu/git/path-tracer/scenes/porsche_911.obj");
-	world_obj_sources.sources[2].worldObjectInfo = glasscube;
-
-	// init cube mesh 2
-	world_obj_sources.sources[0].type = TriangleMeshObj;
-	Material cubemat2;
-	cubemat2.color = make_float3(240, 125, 128);
-	cubemat2.norm_color = cubemat2.color / 255.0f;
-	cubemat2.type = Diffusing;
-	cubemat2.reflect_factor = 0.2f;
-	cubemat2.refract_index = 1.3f;
-	TriangleMeshObjInfo* cube2 = (TriangleMeshObjInfo*)malloc(sizeof(TriangleMeshObjInfo));
-	cube2->material = cubemat2;
-
-	glm::mat4 trans2;//f
-	//trans2 = glm::translate(trans2, glm::vec3(-4.4, 1, 0));
-	//trans2 = glm::scale(trans2, glm::vec3(3));
-	//trans2 = glm::rotate(trans2, glm::radians(90.0f), glm::vec3(1,0,0));
-	//trans2 = glm::translate(trans2, glm::vec3(-0.5, -0.5, -0.5));
-
-	cube2->transform = trans2;
-	strcpy(cube2->src_filename, "C:/Users/raqu/git/path-tracer/scenes/cornell_box.obj");
-	world_obj_sources.sources[0].worldObjectInfo = cube2;
 }
 
 void freeWorldObjSources() {
@@ -205,8 +183,6 @@ cudaTextureObject_t loadTrianglesToCudaTexture(float4 *dev_triangles_ptr, unsign
 	resDesc.resType = cudaResourceTypeLinear;
 	resDesc.res.linear.devPtr = dev_triangles_ptr;
 	resDesc.res.linear.desc = cudaCreateChannelDesc<float4>();
-	/*resDesc.res.linear.desc.f = cudaChannelFormatKindFloat;
-	resDesc.res.linear.desc.x = 8 * sizeof(float4); // bits per channel*/
 	resDesc.res.linear.sizeInBytes = num_triangles * 6 * sizeof(float4);
 
 	cudaTextureDesc texDesc;
@@ -261,6 +237,7 @@ Triangle* loadTriangles(const aiScene* aiscene,
 			tr_host_ptr[i].a = make_float3(ga.x, ga.y, ga.z);
 			tr_host_ptr[i].b = make_float3(gb.x, gb.y, gb.z);
 			tr_host_ptr[i].c = make_float3(gc.x, gc.y, gc.z);
+			tr_host_ptr[i].material_idx = mesh->mMaterialIndex;
 
 			int trg_tex_idx = 6 * i;
 			tr_host_tex_data[trg_tex_idx] = make_float4(ga.x, ga.y, ga.z, 0.0f);
@@ -302,36 +279,6 @@ Triangle* loadTriangles(const aiScene* aiscene,
 }
 
 
-/*TriangleMesh* loadTriangleMeshes(const aiScene* scene, glm::mat4 transform, glm::mat4 inv_transform) {
-	if (scene == NULL)
-		return NULL;
-
-	TriangleMesh* dv_tm_ptr = NULL;
-	int num_meshes = scene->mNumMeshes;
-
-	TriangleMesh* tm_ptr = (TriangleMesh*)malloc(num_meshes * sizeof(TriangleMesh));
-	if (tm_ptr == NULL)
-		return NULL;
-
-	Material* materials = loadMaterialsToHost(scene);
-
-	for (int i = 0; i < num_meshes; ++i) {
-		aiMesh* mesh = scene->mMeshes[i];
-		tm_ptr[i].num_triangles = mesh->mNumFaces;
-		tm_ptr[i].triangles = loadTriangles(mesh, transform, inv_transform);
-		tm_ptr[i].material = materials[mesh->mMaterialIndex];
-		//memcpy(&(tm_ptr[i].material), &(materials[mesh->mMaterialIndex]), sizeof(Material));
-		printf("  Loaded mesh[%d]: number of triangles: %d\n", i, mesh->mNumFaces);
-	}
-
-	cudaOk(cudaMalloc(&dv_tm_ptr, num_meshes * sizeof(TriangleMesh)));
-	cudaOk(cudaMemcpy(dv_tm_ptr, tm_ptr, num_meshes * sizeof(TriangleMesh), cudaMemcpyHostToDevice));
-	free(tm_ptr);
-	free(materials);
-	dv_mem_ptrs.push_back(dv_tm_ptr);
-	return dv_tm_ptr;
-}*/
-
 bool loadSphereObj(void* objInfo, WorldObject& result) {
 	SphereObjInfo* info = (SphereObjInfo*)objInfo;
 
@@ -341,10 +288,15 @@ bool loadSphereObj(void* objInfo, WorldObject& result) {
 	gptr->position = info->position;
 	gptr->radius = info->radius;
 
+	Material* dv_mat = NULL;
+	cudaOk(cudaMalloc(&dv_mat, sizeof(Material)));
+	cudaOk(cudaMemcpy(dv_mat, &(info->material), sizeof(Material), cudaMemcpyHostToDevice));
+	dv_mem_ptrs.push_back(dv_mat);
+
 	SphereGeometryData* dv_gptr = NULL;
 	cudaOk(cudaMalloc(&dv_gptr, sizeof(SphereGeometryData)));
 	result.type = SphereObj;
-	result.material = info->material;
+	result.materials = dv_mat;
 	result.geometry_data = dv_gptr;
 	cudaOk(cudaMemcpy(dv_gptr, gptr, sizeof(SphereGeometryData), cudaMemcpyHostToDevice));
 	printf("  SUCCESS: Loaded sphere.\n\n");
@@ -357,7 +309,7 @@ bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 	TriangleMeshObjInfo* info = (TriangleMeshObjInfo*)objInfo;
 
 	Assimp::Importer importer;
-	printf("Loading Triangle Mesh Object: %s\n", info->src_filename);
+	printf("Loading Mesh Object: %s\n", info->src_filename);
 	const aiScene* aiscene = importer.ReadFile(info->src_filename,
 		aiProcess_CalcTangentSpace |
 		aiProcess_Triangulate |
@@ -365,45 +317,69 @@ bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 		aiProcess_SortByPType
 		);
 	if (aiscene == NULL) {
-		printf("  ERROR: Failed to load Triangle Mesh Object: %s\n", info->src_filename);
-		return false;
+		std::string path(info->src_filename);
+		printf("  ERROR: Failed to load Mesh Object: %s\n", info->src_filename);
+		throw scene_file_error("Assimp failed to load file: " + path);
 	}
 	MeshGeometryData* gptr = (MeshGeometryData*)malloc(sizeof(MeshGeometryData));
 	MeshGeometryData* dv_gptr = NULL;
 	Triangle* trg_host_ptr = NULL;
 	float4* dv_tex_triangle_data = NULL;
+
+	// load materials
+	Material* dv_materials = NULL;
+	Material* host_materials = loadMaterialsToHost(aiscene);
+	cudaOk(cudaMalloc(&dv_materials, aiscene->mNumMaterials * sizeof(Material)));
+	cudaOk(cudaMemcpy(dv_materials, host_materials, aiscene->mNumMaterials * sizeof(Material), cudaMemcpyHostToDevice));
+	result.num_materials = aiscene->mNumMaterials;
+	result.materials = dv_materials;
+	dv_mem_ptrs.push_back(dv_materials);
 	
 	// count transpose inversed matrix for normal vectors transforming
 	glm::mat4 inv_transform = glm::transpose(glm::inverse(info->transform));
+
 	// load all triangles
 	int all_trgs_count;
 	gptr->triangles = loadTriangles(aiscene, info->transform, inv_transform, all_trgs_count, trg_host_ptr, dv_tex_triangle_data);
 	gptr->num_triangles = all_trgs_count;
 	gptr->triangles_tex = loadTrianglesToCudaTexture(dv_tex_triangle_data, all_trgs_count);
-	printf("  Loaded %d triangles in %d meshes\n", gptr->num_triangles, aiscene->mNumMeshes);
+	int trgs_mem_size = all_trgs_count * sizeof(Triangle) / 1024;
+	printf("  Loaded %d triangles in %d meshes. (Glob. memory taken: %d KB)\n", gptr->num_triangles, aiscene->mNumMeshes, trgs_mem_size);
 	
 	// build kd tree
-	printf("  Building KD-Tree for all scene triangles (%d).\n", all_trgs_count);
+	printf("  Building KD-Tree for all triangles (%d).\n", all_trgs_count);
 	int* trg_idxs = (int*)malloc(all_trgs_count * sizeof(int));
-	int** trg_addr = &trg_idxs;
 	for (int idx = 0; idx < all_trgs_count; idx++)
 		trg_idxs[idx] = idx;
-	KDNode* host_kdtree = buildKDTree(trg_host_ptr, trg_idxs, all_trgs_count, 0);
+	int num_nodes = 0, max_depth = 0;
+	KDNode* host_kdtree = buildKDTree(trg_host_ptr, trg_idxs, all_trgs_count, 0, num_nodes, max_depth);
+	int kd_tree_size = num_nodes * sizeof(KDNode) / 1024;
+	KDNode* host_flat_tree = (KDNode*)malloc(num_nodes * sizeof(KDNode));
+	flatenKDTree(host_kdtree, host_flat_tree);
+	printf("  Finished building KD-Tree (Num. nodes: %d, Max depth: %d, Mem. size: %d KB).\n", num_nodes, max_depth, kd_tree_size);
+	KDNode* dv_flat_tree = NULL;
+	cudaOk(cudaMalloc(&dv_flat_tree, num_nodes * sizeof(KDNode)));
+	cudaOk(cudaMemcpy(dv_flat_tree, host_flat_tree, num_nodes * sizeof(KDNode), cudaMemcpyHostToDevice));
+	dv_mem_kdtrees_ptrs.push_back(dv_flat_tree);
+	gptr->flat_kd_root = dv_flat_tree;
+
 	KDNode* dv_kdtree = copyKDTreeToCuda(host_kdtree);
 	gptr->kdroot = dv_kdtree;
 	dv_mem_kdtrees_ptrs.push_back(dv_kdtree);
-	freeKDTree(host_kdtree);
 
 	cudaOk(cudaMalloc(&dv_gptr, sizeof(MeshGeometryData)));
 	result.type = TriangleMeshObj;
-	result.material = info->material;
+	result.materials = dv_materials;
 	result.geometry_data = dv_gptr;
 	cudaOk(cudaMemcpy(dv_gptr, gptr, sizeof(MeshGeometryData), cudaMemcpyHostToDevice));
 
-	if (!checkCudaError("Loading Triangle Mesh Object"))
-		printf("  SUCCESS: Loaded Triangle Mesh Object: %s\n\n", info->src_filename);
+	if (!checkCudaError("Loading Mesh Object"))
+		printf("  SUCCESS: Loaded Mesh Object: %s\n\n", info->src_filename);
 	dv_mem_ptrs.push_back(dv_gptr);
 	free(gptr);
+	free(host_flat_tree);
+	free(host_materials);
+	freeKDTree(host_kdtree);
 	return true;
 }
 
@@ -430,17 +406,25 @@ WorldObject* loadWorldObjects() {
 	return dv_wo_ptr;
 }
 
-void loadSceneWorldObjects() {
-	printf("Sizeof: %s = %d\n\n", "WorldObject", sizeof(WorldObject));
+void loadSceneWorldObjects(const Json::Value& jscene) {
+	printSep();
+	printf("Memory struct sizes:\n");
+	printf("Sizeof: %s = %d\n", "WorldObject", sizeof(WorldObject));
+	printf("Sizeof: %s = %d\n", "KDNode", sizeof(KDNode));
+	printf("Sizeof: %s = %d\n", "BBox", sizeof(BBox));
 	printf("Sizeof: %s = %d\n", "MeshGeometryData", sizeof(MeshGeometryData));
 	printf("Sizeof: %s = %d\n", "SphereGeometryData", sizeof(SphereGeometryData));
-
 	printf("Sizeof: %s = %d\n", "Triangle", sizeof(Triangle));
-
 	printf("Sizeof: %s = %d\n", "Material", sizeof(Material));
-	printf("Sizeof: %s = %d\n", "WorldObjType", sizeof(WorldObjType));
-	initWorldObjSources();
-	scene.dv_wobjects_ptr = loadWorldObjects();
+	printSep();
+	try {
+		initWorldObjSources(jscene);
+		scene.dv_wobjects_ptr = loadWorldObjects();
+	}
+	catch (const scene_file_error& e) {
+		freeWorldObjects();
+		throw scene_file_error(e.what());
+	}
 }
 
 void freeWorldObjects() {

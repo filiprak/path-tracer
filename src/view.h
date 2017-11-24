@@ -6,10 +6,9 @@
 #include <cuda_gl_interop.h>
 
 extern GLuint viewPBO_id;
-extern GLuint viewWidth, viewHeight;
 
 
-bool viewInit();
+bool viewInit(const Json::Value&);
 
 void viewLoop();
 

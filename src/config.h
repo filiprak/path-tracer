@@ -5,7 +5,7 @@
 #define CAM_MOVE_DISTANCE_DELTA			0.2f // units
 
 // path tracing parameters
-#define MAX_NUM_RAY_BOUNCES				3// maximum number of traced ray bounces in path tracing
+#define MAX_NUM_RAY_BOUNCES				5// maximum number of traced ray bounces in path tracing
 #define SCENE_REFRACTION_INDEX			1.0f // refraction index of scene empty space, air = 1.0
 
 // CUDA parameters
@@ -18,9 +18,10 @@
 
 // Use KD-tree for fast triangle mesh intersection detecting
 #define USE_KD_TREES
+#define USE_SHORT_STACK_LOOP
 
 // Use CUDA texture memory to store triangles data
-#define USE_TRIANGLE_TEXTURE_MEM
+//#define USE_TRIANGLE_TEXTURE_MEM
 
 // Precompute triangle edges, triangle is stored then as (a, b - a, c - a)
 // when normally it is stored as (a, b, c)

@@ -14,7 +14,6 @@ const char* shaderFragDefault = "shaders/default.frag";
 
 // main rendering view window
 GLFWwindow *window;
-GLuint viewWidth = 400, viewHeight = 300;
 
 GLuint viewPBO_id;
 struct cudaGraphicsResource* viewPBO_cuda;
@@ -50,17 +49,12 @@ GLuint viewInitShader() {
 
 void viewPBOinit(GLuint* pbo) {
 	// set up vertex data parameter
-	int size = viewWidth * viewHeight;
-	int num_values = size * 4;
-	int size_tex_data = sizeof(GLubyte) * num_values;
+	Camera& cam = scene.camera;
+	int sizeof_pbo = 4 * cam.projection.num_pixels * sizeof(GLubyte);
 
 	glGenBuffers(1, pbo);
-
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *pbo);
-
-	// Allocate data for the buffer. 4-channel 8-bit image
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
-	//cudaGLRegisterBufferObject(*pbo);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, sizeof_pbo, NULL, GL_DYNAMIC_COPY);
 	cudaGraphicsGLRegisterBuffer(&viewPBO_cuda, *pbo, cudaGraphicsMapFlagsWriteDiscard);
 }
 
@@ -117,7 +111,10 @@ void viewTextureInit(GLuint* id) {
 	glBindTexture(GL_TEXTURE_2D, *id);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, viewWidth, viewHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
+		scene.camera.projection.width,
+		scene.camera.projection.height,
+		0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
 }
 
 void viewTextureDelete(GLuint* id) {
@@ -137,7 +134,8 @@ void viewInitCUDA() {
 }
 
 
-bool viewInit() {
+bool viewInit(const Json::Value& jcam) {
+	Camera& cam = scene.camera;
 	glfwSetErrorCallback(viewErrCallback);
 
 	// Initialize glfw library
@@ -145,7 +143,7 @@ bool viewInit() {
 		exit(EXIT_FAILURE);
 	}
 
-	window = glfwCreateWindow(viewWidth, viewHeight, "path-tracer", NULL, NULL);
+	window = glfwCreateWindow(cam.projection.width, cam.projection.height, "path-tracer", NULL, NULL);
 	if (!window) {
 		glfwTerminate();
 		return false;
@@ -179,6 +177,7 @@ bool viewInit() {
 
 void viewLoop() {
 	char title[48];
+	int2 screen_size = make_int2(scene.camera.projection.width, scene.camera.projection.height);
 
 	// init cuda kernel
 	kernelInit();
@@ -204,7 +203,7 @@ void viewLoop() {
 
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, viewPBO_id);
 		glBindTexture(GL_TEXTURE_2D, viewTexture_id);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, viewWidth, viewHeight, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, screen_size.x, screen_size.y, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		// VAO, shader program, and texture already bound
@@ -232,7 +231,7 @@ static void viewKeyCallback(GLFWwindow* window, int key, int scancode, int actio
 {
 	printf("viewKeyCallback();\n");
 	int rcontrol_pressed = glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
-	float power = rcontrol_pressed ? 3.0f : 1.0f;
+	float scale = rcontrol_pressed ? 3.0f : 1.0f;
 
 	Camera& cam = scene.camera;
 
@@ -244,29 +243,42 @@ static void viewKeyCallback(GLFWwindow* window, int key, int scancode, int actio
 		resetCamera();
 		return;
 	}
+	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
+		togglePrevMode();
+		return;
+	}
+
+	if (action == GLFW_PRESS) {
+		key == GLFW_KEY_COMMA ? updateMaxRayBnc(-1) :
+			(key == GLFW_KEY_PERIOD ? updateMaxRayBnc(1) : NULL);
+
+		key == GLFW_KEY_LEFT_BRACKET ? updateAajitter(-0.1f * scale) :
+			(key == GLFW_KEY_RIGHT_BRACKET ? updateAajitter(0.1f * scale) : NULL);
+	}
+
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		rotateVCamera(CAM_ROTATE_ANGLE_DELTA * power);
+		rotateVCamera(-CAM_ROTATE_ANGLE_DELTA * scale);
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		rotateVCamera(-CAM_ROTATE_ANGLE_DELTA * power);
+		rotateVCamera(CAM_ROTATE_ANGLE_DELTA * scale);
 	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-		rotateHCamera(CAM_ROTATE_ANGLE_DELTA * power);
+		rotateHCamera(-CAM_ROTATE_ANGLE_DELTA * scale);
 	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-		rotateHCamera(-CAM_ROTATE_ANGLE_DELTA * power);
+		rotateHCamera(CAM_ROTATE_ANGLE_DELTA * scale);
 
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		moveCamera(make_float3(CAM_MOVE_DISTANCE_DELTA * power, .0, .0));
+		moveCamera(make_float3(-CAM_MOVE_DISTANCE_DELTA * scale, .0, .0));
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		moveCamera(make_float3(-CAM_MOVE_DISTANCE_DELTA * power, .0, .0));
+		moveCamera(make_float3(CAM_MOVE_DISTANCE_DELTA * scale, .0, .0));
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		moveCamera(make_float3(.0, CAM_MOVE_DISTANCE_DELTA * power, .0));
+		moveCamera(make_float3(.0, CAM_MOVE_DISTANCE_DELTA * scale, .0));
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		moveCamera(make_float3(.0, -CAM_MOVE_DISTANCE_DELTA * power, .0));
+		moveCamera(make_float3(.0, -CAM_MOVE_DISTANCE_DELTA * scale, .0));
 
 	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
-		moveCamera(make_float3(.0, .0, CAM_MOVE_DISTANCE_DELTA * power));
+		moveCamera(make_float3(.0, .0, CAM_MOVE_DISTANCE_DELTA * scale));
 	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
-		moveCamera(make_float3(.0, .0, -CAM_MOVE_DISTANCE_DELTA * power));
+		moveCamera(make_float3(.0, .0, -CAM_MOVE_DISTANCE_DELTA * scale));
 }
 
 void runCUDA(int iter) {

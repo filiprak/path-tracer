@@ -7,10 +7,15 @@
 Scene scene;
 
 
-void sceneInit() {
-	initCamera();
+void sceneInit(const Json::Value& jcam) {
+	initCamera(jcam);
 }
 
-void worldInit() {
-	sceneInit();
+void worldInit(const Json::Value& jscene) {
+	sceneInit(jscene["camera"]);
+	loadSceneWorldObjects(jscene);
+}
+
+void worldCleanUp() {
+	freeWorldObjects();
 }

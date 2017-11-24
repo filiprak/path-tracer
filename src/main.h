@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include "json/json.h"
+
 
 #if defined(__CUDACC__) // NVCC
 #define alignMem(n) __align__(n)
@@ -14,8 +16,8 @@
 
 typedef void* dv_ptr;
 
-
 void printSep();
 void printProgramConfig();
 
-extern std::string scenefile;
+// scene file name
+extern std::string input_file;

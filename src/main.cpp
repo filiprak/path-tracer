@@ -1,9 +1,14 @@
 #include "main.h"
 #include "view.h"
 #include "world.h"
+#include "errors.h"
 #include "cudaUtility.h"
 #include "kernel.h"
 #include "config.h"
+#include "json/json.h"
+#include <fstream>
+
+std::string input_file;
 
 
 void printProgramConfig() {
@@ -32,13 +37,34 @@ void printProgramConfig() {
 	printSep();
 }
 
-int main(int argc, char* argv[]) {
-	/*if (argc > 1)
-		scenefile = std::string(argv[1]);
-	else
-		scenefile = std::string("C:/Users/raqu/git/path-tracer/scenes/teapot.obj");*/
 
+bool parseJsonScene(Json::Value& root, std::string& errmsg) {
+	Json::Reader reader;
+	std::ifstream jstream(input_file, std::ifstream::binary);
+	bool parsingSuccessful = reader.parse(jstream, root, false);
+	if (!parsingSuccessful)
+		errmsg = reader.getFormattedErrorMessages();
+	return parsingSuccessful;
+}
+
+
+int main(int argc, char* argv[]) {
 	printf("Starting path-tracer application.\n");
+	if (argc > 1)
+		input_file = std::string(argv[1]);
+	else {
+		printf("Usage: command <scene_file.json>.");
+		exit(EXIT_FAILURE);
+	}
+
+	// parse scene file
+	Json::Value jscene;
+	std::string errmsg;
+	if (!parseJsonScene(jscene, errmsg)) {
+		printf("Error in scene JSON: %s\n", errmsg.c_str());
+		exit(EXIT_FAILURE);
+	}
+	
 	int dvNum = printCudaDevicesInfo();
 	if (dvNum < 1) {
 		printf("CUDA devices not found.\nPlease ensure you have it installed.");
@@ -55,16 +81,22 @@ int main(int argc, char* argv[]) {
 	if (checkCudaError("Unable to set CUDA device stack size.\n"))
 		exit(EXIT_FAILURE);
 
-	printf("Initializing preview window...\n");
-	viewInit();
+	try {
+		printf("Initializing world elements...\n");
+		worldInit(jscene);
 
-	printf("Initializing world elements...\n");
-	worldInit();
+		printf("Initializing preview window...\n");
+		viewInit(jscene["camera"]);
+	}
+	catch (const Json::Exception& je) {
+		printf("Error while parsing scene file: %s\n", je.what());
+		exit(EXIT_FAILURE);
+	}
+	catch (const scene_file_error& err) {
+		printf("Error while loading scene: %s\n", err.what());
+		exit(EXIT_FAILURE);
+	}
 
-
-
-	printf("Starting preview loop...\n");
-	printSep();
 	printf("Starting preview loop...\n");
 	viewLoop();
 	printf("Exiting program...\n");

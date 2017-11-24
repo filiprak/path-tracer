@@ -32,3 +32,4 @@ bool checkCudaError(const char* context) {
 	}
 	return false;
 }
+

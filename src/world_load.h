@@ -11,7 +11,7 @@
 #define OBJECTS_TYPES_NUM	2
 
 __host__
-void loadSceneWorldObjects();
+void loadSceneWorldObjects(const Json::Value&);
 
 __host__
 void freeWorldObjects();
@@ -26,8 +26,8 @@ bool loadTriangleMeshObj(void*, WorldObject&);
 KDNode* copyKDTreeToCuda(KDNode*);
 void freeKDTree(KDNode*);
 void freeCudaKDTree(KDNode*);
-KDNode* buildKDTree(Triangle*, int*&, int, int);
-
+KDNode* buildKDTree(Triangle*, int*, int, int, int&, int&);
+void flatenKDTree(KDNode*, KDNode*);
 
 typedef struct {
 	WorldObjType type;
@@ -55,8 +55,7 @@ typedef struct {
 } SphereObjInfo;
 
 typedef struct {
-	Material material;
-	char src_filename[128];
+	char src_filename[256];
 
 	glm::mat4 transform;
 

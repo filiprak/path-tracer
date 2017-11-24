@@ -17,10 +17,8 @@ float4* device_accum_image = NULL;
 __host__
 void kernelInit()
 {
-	int pixel_num = viewWidth * viewHeight;
-
-	cudaMalloc(&device_accum_image, pixel_num * sizeof(float4));
-	cudaMemset(device_accum_image, 0, pixel_num * sizeof(float4));
+	cudaMalloc(&device_accum_image, scene.camera.projection.num_pixels * sizeof(float4));
+	cudaMemset(device_accum_image, 0, scene.camera.projection.num_pixels * sizeof(float4));
 
 	initPathTracing();
 }
@@ -55,27 +53,30 @@ void writeImageToPBO(uchar4* pbo, int width, int height, int iter, float4* image
 __host__
 cudaError_t kernelMain(uchar4* pbo, int iter)
 {
+	Camera& cam = scene.camera;
 	// Launch a kernel on the GPU with one thread for each element.
 	const int blockSideLength = 24;
 	const dim3 blockSize(blockSideLength, blockSideLength);
 	const dim3 blocksPerGrid(
-		(viewWidth + blockSize.x - 1) / blockSize.x,
-		(viewHeight + blockSize.y - 1) / blockSize.y);
+		(cam.projection.width + blockSize.x - 1) / blockSize.x,
+		(cam.projection.height + blockSize.y - 1) / blockSize.y);
 
 	if (iter == 1) {
 		// clear image
-		cudaMemset(device_accum_image, 0, viewWidth * viewHeight * sizeof(float4));
+		cudaMemset(device_accum_image, 0, cam.projection.num_pixels * sizeof(float4));
 	}
 
 	{ // pathtrace
-		int iterHash = utilhash(iter);
-		runPathTracing(iterHash);
+		int iterHash = wang_hash(utilhash(iter));
+		int jitterHash = wang_hash(iter);
+
+		runPathTracing(iterHash, jitterHash);
 		cudaDeviceSynchronize();
 		checkCudaError("run runPathTracing()");
 	}
 
 	// write results to pbo
-	writeImageToPBO <<<blocksPerGrid, blockSize>>>(pbo, viewWidth, viewHeight, iter, device_accum_image);
+	writeImageToPBO << <blocksPerGrid, blockSize >> >(pbo, cam.projection.width, cam.projection.height, iter, device_accum_image);
 	checkCudaError("run sendImageToPBO<<<>>>()");
     
     cudaDeviceSynchronize();

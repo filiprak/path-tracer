@@ -36,32 +36,32 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 	bool hit_refractive = false;*/
 
 	// bounce ray
-	for (int bounce = 0; bounce < MAX_NUM_RAY_BOUNCES; ++bounce) {
+	for (int bounce = 0; bounce < scene.camera.max_ray_bounces; ++bounce) {
 		int inters_obj_idx;
 		float3 inters_point, surf_normal;
 		float3 debug_mask = make_float3(1.0f);
-
-		if (!rayIntersectsScene(ray, scene, inters_obj_idx, inters_point, surf_normal, debug_mask))
+		const Material* mat;
+		if (!rayIntersectsScene(ray, scene, inters_obj_idx, mat, inters_point, surf_normal, debug_mask))
 #ifdef DEBUG_BBOXES
 			return 255.0f * (make_float3(1.0f) - debug_mask);
 #else
 			return make_float3(0);
 #endif
 		
-		Material mat = scene.dv_wobjects_ptr[inters_obj_idx].material;
 #ifdef DEBUG_BBOXES
-		return 0.8 * 255.0f * (make_float3(1.0f) - debug_mask) + 0.2 * mat.color * fabs(dot(ray.direction, surf_normal));
+		return 0.8 * 255.0f * (make_float3(1.0f) - debug_mask) + 0.2 * mat->color * fabs(dot(ray.direction, surf_normal));
 #endif
-		
+		if (scene.camera.preview_mode)
+			return fabsf(dot(surf_normal, ray.direction)) * make_float3(190.0f);
 		// take hit object reference
 		/*if (obj.type == TriangleMeshObj) {
 			MeshGeometryData* md = (MeshGeometryData*)obj.geometry_data;
 			mat = md->meshes[mesh_idx].material;
 			printf("mesh: %d\n    Ka: [%.1f,%.1f,%.1f]\n    Ke: [%.1f,%.1f,%.1f]\n    d: %f, Ni: %f\n",
 				mesh_idx,
-				mat.norm_color.x, mat.norm_color.y, mat.norm_color.z,
-				mat.emittance.x, mat.emittance.y, mat.emittance.z,
-				mat.reflect_factor, mat.refract_index);
+				mat->norm_color.x, mat->norm_color.y, mat->norm_color.z,
+				mat->emittance.x, mat->emittance.y, mat->emittance.z,
+				mat->reflect_factor, mat->refract_index);
 		}*/
 		
 		/*if (!hit_refractive && bounce == 0)
@@ -70,18 +70,18 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 			debug_path[2 * bounce] = ray.originPoint;*/
 
 		// shading pixels -------------------------------------------------
-		switch (mat.type) {
+		switch (mat->type) {
 
 			// material cases
-			case Luminescent: radiance += mask * mat.emittance; return radiance;
+			case Luminescent: radiance += mask * mat->emittance; return radiance;
 			case Diffusing: Diffuse_BRDF(ray, ray, surf_normal, inters_point, curand_s); break;
-			case Reflective: ReflectiveDiffuse_BRDF(ray, ray, mat.reflect_factor, surf_normal, inters_point, curand_s); break;
-			case Refractive: Refractive_BRDF(ray, ray, mat.refract_index,
-				mat.reflect_factor, mask, surf_normal, inters_point, curand_s); break;
+			case Reflective: ReflectiveDiffuse_BRDF(ray, ray, mat->reflect_factor, surf_normal, inters_point, curand_s); break;
+			case Refractive: Refractive_BRDF(ray, ray, mat->refract_index,
+				mat->reflect_factor, mask, surf_normal, inters_point, curand_s); break;
 
 		}
 		// mask light with current object colour
-		mask *= mat.norm_color;
+		mask *= mat->norm_color;
 		/*if (hit_refractive)
 			debug_path[2 * bounce + 1] = inters_point;*/
 	}

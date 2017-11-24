@@ -49,6 +49,7 @@ float trs_median(Triangle* trs_src, int* trs_idxs, int num_trs, int axis) {
 	return coords_median;
 }
 
+#define BBOX_BIAS	0.00005f
 BBox makeTrgBBox(Triangle& trg) {
 	BBox bbox;
 	bbox.bounds[0].x = fmin(trg.a.x, fmin(trg.b.x, trg.c.x));
@@ -58,6 +59,9 @@ BBox makeTrgBBox(Triangle& trg) {
 	bbox.bounds[1].x = fmax(trg.a.x, fmax(trg.b.x, trg.c.x));
 	bbox.bounds[1].y = fmax(trg.a.y, fmax(trg.b.y, trg.c.y));
 	bbox.bounds[1].z = fmax(trg.a.z, fmax(trg.b.z, trg.c.z));
+
+	bbox.bounds[0] += make_float3(-BBOX_BIAS);
+	bbox.bounds[1] += make_float3(BBOX_BIAS);
 	return bbox;
 }
 
@@ -68,20 +72,24 @@ void expandBBox(BBox& bbox, Triangle& tr) {
 	float3& vmin = bbox.bounds[0];
 	float3& vmax = bbox.bounds[1];
 
-	vmin.x = fmin(vmin.x, trvmin.x);
-	vmin.y = fmin(vmin.y, trvmin.y);
-	vmin.z = fmin(vmin.z, trvmin.z);
+	vmin.x = fmin(vmin.x, trvmin.x - BBOX_BIAS);
+	vmin.y = fmin(vmin.y, trvmin.y - BBOX_BIAS);
+	vmin.z = fmin(vmin.z, trvmin.z - BBOX_BIAS);
 
-	vmax.x = fmax(vmax.x, trvmax.x);
-	vmax.y = fmax(vmax.y, trvmax.y);
-	vmax.z = fmax(vmax.z, trvmax.z);
+	vmax.x = fmax(vmax.x, trvmax.x + BBOX_BIAS);
+	vmax.y = fmax(vmax.y, trvmax.y + BBOX_BIAS);
+	vmax.z = fmax(vmax.z, trvmax.z + BBOX_BIAS);
 }
 
-KDNode* buildKDTree(Triangle* trg_src, int*& trg_idxs, int num_trs, int depth) {
+KDNode* buildKDTree(Triangle* trg_src, int* trg_idxs, int num_trs, int depth, int& num_nodes, int& max_depth) {
 	KDNode* node = (KDNode*)malloc(sizeof(KDNode));
 	node->trg_idxs = trg_idxs;
 	node->num_trgs = num_trs;
 	node->left = node->right = NULL;
+	node->idx = num_nodes;
+	node->left_idx = -1;
+	node->right_idx = -1;
+	num_nodes++;
 	/*printf("    Depth: %d, Node: [triangles: %d] ", depth, num_trs);
 	printf("idx: [");
 	for (int i = 0; i < num_trs; i++)
@@ -111,6 +119,7 @@ KDNode* buildKDTree(Triangle* trg_src, int*& trg_idxs, int num_trs, int depth) {
 	// get axis, order is X -> Y -> Z -> X -> Y -> ...
 	// X = 0, Y = 1, Z = 2
 	int axis = depth % 3;
+	max_depth = max(max_depth, depth);
 	float median = trs_median(trg_src, trg_idxs, num_trs, axis);
 
 	// divide triangles into tree nodes
@@ -130,17 +139,34 @@ KDNode* buildKDTree(Triangle* trg_src, int*& trg_idxs, int num_trs, int depth) {
 	int left_size = trg_left_idxs.size();
 	int right_size = trg_right_idxs.size();
 
-	if (left_size > 6) {
+	if (left_size > 16) {
 		int* left_idxs = (int*)malloc(left_size * sizeof(int));
 		memcpy(left_idxs, trg_left_idxs.data(), left_size * sizeof(int));
-		node->left = buildKDTree(trg_src, left_idxs, left_size, depth + 1);
+		node->left = buildKDTree(trg_src, left_idxs, left_size, depth + 1, num_nodes, max_depth);
 
 		int* right_idxs = (int*)malloc(right_size * sizeof(int));
 		memcpy(right_idxs, trg_right_idxs.data(), right_size * sizeof(int));
-		node->right = buildKDTree(trg_src, right_idxs, right_size, depth + 1);
+		node->right = buildKDTree(trg_src, right_idxs, right_size, depth + 1, num_nodes, max_depth);
 	}
 
+	if (node->left != NULL)
+		node->left_idx = node->left->idx;
+	if (node->right != NULL)
+		node->right_idx = node->right->idx;
 	return node;
+}
+
+void flatenKDTree(KDNode* host_node, KDNode* flat_mem_ptr) {
+	if (host_node == NULL)
+		return;
+	flat_mem_ptr[host_node->idx] = *host_node;
+	int* trg_idxs_cp = NULL;
+	cudaOk(cudaMalloc(&trg_idxs_cp, host_node->num_trgs * sizeof(int)));
+	dv_tree_mem_ptrs.push_back(trg_idxs_cp);
+	cudaOk(cudaMemcpy(trg_idxs_cp, host_node->trg_idxs, host_node->num_trgs * sizeof(int), cudaMemcpyHostToDevice));
+	flat_mem_ptr[host_node->idx].trg_idxs = trg_idxs_cp;
+	flatenKDTree(host_node->left, flat_mem_ptr);
+	flatenKDTree(host_node->right, flat_mem_ptr);
 }
 
 KDNode* copyKDTreeToCuda(KDNode* host_root) {
