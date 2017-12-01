@@ -4,7 +4,7 @@
 #include "camera.h"
 #include "KDTree.h"
 #include "cuda_runtime.h"
-#include <glm\glm.hpp>
+#include <glm/glm.hpp>
 
 
 /* World Object types, important: dont reorder values */

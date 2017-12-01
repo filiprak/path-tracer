@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glm\glm.hpp>
+#include <glm/glm.hpp>
 #include "vector_types.h"
 #include "main.h"
 

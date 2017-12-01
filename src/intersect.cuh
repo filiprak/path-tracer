@@ -246,7 +246,6 @@ bool rayIntersectsKDNodeLOOP(Ray& ray,
 			stack_pos--;
 		}
 	}
-	return intersects;
 }
 
 __device__
@@ -271,7 +270,6 @@ bool rayIntersectsKDNode(Ray& ray, Triangle* trs, int trg_tex, KDNode* node, flo
 	}
 	else { // leaf node of kd tree
 		float t, u, v;
-		int n_idx;
 		bool intersects = false;
 		for (int i = 0; i < node->num_trgs; i++)
 		{

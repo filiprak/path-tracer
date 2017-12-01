@@ -7,7 +7,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 # Set up include and lib paths
 set(EXTERNAL "external")
 include_directories("${EXTERNAL}")
-include_directories("${EXTERNAL}/include")
+include_directories("${EXTERNAL}/include/")
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(EXTERNAL_LIB_PATH "${EXTERNAL}/lib/linux" "/usr/lib64")
@@ -20,26 +20,31 @@ list(APPEND CMAKE_LIBRARY_PATH "${EXTERNAL_LIB_PATH}")
 
 # Find up and set up core dependency libs
 
+# GLFW
 set(GLFW_INCLUDE_DIR "${EXTERNAL}/include")
 set(GLFW_LIBRARY_DIR "${CMAKE_LIBRARY_PATH}")
 find_library(GLFW_LIBRARY "glfw3" HINTS "${GLFW_LIBRARY_DIR}")
 
+# GLEW
 set(GLEW_INCLUDE_DIR "${EXTERNAL}/include")
 set(GLEW_LIBRARY_DIR "${CMAKE_LIBRARY_PATH}")
 add_definitions(-DGLEW_STATIC)
-find_package(GLEW)
+find_package(GLEW REQUIRED)
 
-set(ASSIMP_INCLUDE_DIR "${EXTERNAL}/include")
-set(ASSIMP_LOADER_LIBRARY_DIR "${CMAKE_LIBRARY_PATH}")
-find_library(ASSIMP_LOADER_LIBRARY "assimp-vc120-mt" HINTS "${ASSIMP_LOADER_LIBRARY_DIR}")
+# ASSIMP
+set(ASSIMP_INCLUDE_DIRS "${EXTERNAL}/include")
+set(ASSIMP_LIBRARY_DIRS "${CMAKE_LIBRARY_PATH}")
+find_package(ASSIMP REQUIRED)
 
-find_package(OpenGL)
+# OPENGL
+find_package(OpenGL REQUIRED)
+
 
 set(CORELIBS
     "${GLFW_LIBRARY}"
     "${OPENGL_LIBRARY}"
     "${GLEW_LIBRARY}"
-	"${ASSIMP_LOADER_LIBRARY}"
+	"${ASSIMP_LIBRARY}"
     )
 
 # Enable C++11 for host code
@@ -48,7 +53,7 @@ set(CMAKE_CXX_STANDARD 11)
 # Enable CUDA debug info in debug mode builds
 list(APPEND CUDA_NVCC_FLAGS_DEBUG -G -g)
 
-# Specify CUDA compute capability
+# Specify CUDA nvcc flags
 list(APPEND CUDA_NVCC_FLAGS -arch=sm_35)
 
 # Linux-specific hacks/fixes
@@ -56,14 +61,13 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     list(APPEND CMAKE_EXE_LINKER_FLAGS "-lX11 -lXxf86vm -lXrandr -lXi")
 endif()
 
-# Crucial magic for CUDA linking
+# CUDA linking
 find_package(Threads REQUIRED)
 find_package(CUDA REQUIRED)
 
 set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE ON)
 set(CUDA_SEPARABLE_COMPILATION ON)
 
-#add_subdirectory(stream_compaction)  # TODO: uncomment if using your stream compaction
 
 set(SRC_PATH "src")
 # set up source files
@@ -80,7 +84,6 @@ cuda_add_executable(${CMAKE_PROJECT_NAME}
     )
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
-    #stream_compaction  # TODO: uncomment if using your stream compaction
     ${CORELIBS}
     )
 
