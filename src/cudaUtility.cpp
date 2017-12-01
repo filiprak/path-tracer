@@ -1,11 +1,14 @@
 #include "main.h"
+#include "cudaUtility.h"
 #include <cuda_runtime.h>
 
 
 int printCudaDevicesInfo() {
-	int nDevices;
+	int nDevices = 0;
 
 	cudaGetDeviceCount(&nDevices);
+	if (checkCudaError("cudaGetDeviceCount()"))
+		return 0;
 	printf("Detected CUDA devices:\n");
 	printSep();
 	for (int i = 0; i < nDevices; i++) {

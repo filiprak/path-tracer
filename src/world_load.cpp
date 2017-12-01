@@ -3,28 +3,34 @@
 #include "world.h"
 #include "main.h"
 #include "errors.h"
-#include "cuda_runtime.h"
 #include <vector>
+
+/* stb image */
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
 
 /* assimp include files */
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+/* json includes */
 #include "json/json.h"
-#include "world.h"
 #include "jsonResolve.h"
 
+/* cuda includes */
+#include "cuda_runtime.h"
 #include "cudaUtility.h"
 #include "cutil_math.h"
 
+/* glm */
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 
 WorldObjectsSources world_obj_sources;
 
-// cuda device resources
+// cuda device resources collections
 static std::vector<dv_ptr> dv_mem_ptrs;
 static std::vector<cudaTextureObject_t> dv_textures;
 static std::vector<dv_ptr> dv_mem_kdtrees_ptrs;
@@ -107,6 +113,66 @@ void freeWorldObjSources() {
 }
 
 __host__
+cudaTextureObject_t loadTexture(const std::string src_path)
+{
+	int width, height, channels;
+	float* img = stbi_loadf(src_path.c_str(), &width, &height, &channels, 0);
+	if (!img) // failed to load texture file
+		return -1;
+
+	float4* host_tex_data = (float4*)malloc(height * width * sizeof(float4));
+	for (int row = 0; row < height; row++)
+	{
+		for (int col = 0; col < width; col++)
+		{
+			int index = channels * (row * width + col);
+			float rgba[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			for (int channel = 0; channel < channels; channel++)
+				rgba[channel] = img[index + channel];
+			if (channels < 3)
+				host_tex_data[row * width + col] = make_float4(rgba[0], rgba[0], rgba[0], rgba[1]);
+			else
+				host_tex_data[row * width + col] = make_float4(rgba[0], rgba[1], rgba[2], rgba[3]);
+		}
+	}
+	stbi_image_free(img);
+	// allocate and copy pitch2D on cuda device
+	float4* dev_tex_data;
+	size_t pitch;
+	cudaOk(cudaMallocPitch(&dev_tex_data, &pitch, width * sizeof(float4), height));
+	cudaOk(cudaMemcpy2D(dev_tex_data, pitch, host_tex_data,
+		width * sizeof(float4), height * sizeof(float4),
+		height, cudaMemcpyHostToDevice));
+	dv_mem_ptrs.push_back(dev_tex_data);
+	free(host_tex_data);
+
+	// create cuda resource object
+	cudaResourceDesc resDesc;
+	memset(&resDesc, 0, sizeof(resDesc));
+	resDesc.resType = cudaResourceTypePitch2D;
+	resDesc.res.pitch2D.width = width;
+	resDesc.res.pitch2D.height = height;
+	resDesc.res.pitch2D.pitchInBytes = pitch;
+	resDesc.res.pitch2D.devPtr = dev_tex_data;
+	resDesc.res.pitch2D.desc = cudaCreateChannelDesc<float4>();
+
+	cudaTextureDesc texDesc;
+	memset(&texDesc, 0, sizeof(texDesc));
+	texDesc.readMode = cudaReadModeElementType;
+	texDesc.filterMode = cudaFilterModePoint;
+	texDesc.addressMode[0] = cudaAddressModeWrap;
+	texDesc.addressMode[1] = cudaAddressModeWrap;
+	texDesc.normalizedCoords = true;
+
+	// create texture object
+	cudaTextureObject_t tex = 0;
+	cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL);
+	dv_textures.push_back(tex);
+	checkCudaError("loadTexture()");
+	return tex;
+}
+
+__host__
 Material* loadMaterialsToHost(const aiScene* aiscene) {
 	if (!aiscene->HasMaterials())
 		return NULL;
@@ -136,15 +202,37 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 		 */
 		aiColor3D Ka, Kd, Ke;
 		float d, Ni;
+		aiString texture_path;
+		unsigned int uvindex;
+
 		material->Get(AI_MATKEY_COLOR_AMBIENT, Ka);
 		material->Get(AI_MATKEY_COLOR_DIFFUSE, Kd);
 		material->Get(AI_MATKEY_COLOR_EMISSIVE, Ke);
 		material->Get(AI_MATKEY_REFRACTI, Ni);
 		material->Get(AI_MATKEY_OPACITY, d);
 		
-		mat_ptr[i].norm_color = make_float3(Ka.r, Ka.g, Ka.b);
-		mat_ptr[i].color = 255.0f * make_float3(Ka.r, Ka.g, Ka.b);
-		mat_ptr[i].emittance = make_float3(Ke.r, Ke.g, Ke.b);
+		mat_ptr[i].cuda_texture_obj = 0;
+		if (material->GetTextureCount(aiTextureType_AMBIENT) > 0) {
+			material->GetTexture(aiTextureType_AMBIENT, 0, &texture_path, NULL, &uvindex);
+			printf("    Loading ambient texture: %s\n", texture_path.C_Str());
+			mat_ptr[i].cuda_texture_obj = loadTexture(std::string(texture_path.C_Str()));
+		}
+		else if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
+			material->GetTexture(aiTextureType_DIFFUSE, 0, &texture_path, NULL, &uvindex);
+			printf("    Loading diffuse texture: %s\n", texture_path.C_Str());
+			mat_ptr[i].cuda_texture_obj = loadTexture(std::string(texture_path.C_Str()));
+		}
+		else if (material->GetTextureCount(aiTextureType_EMISSIVE) > 0) {
+			material->GetTexture(aiTextureType_EMISSIVE, 0, &texture_path, NULL, &uvindex);
+			printf("    Loading emissive texture: %s\n", texture_path.C_Str());
+			mat_ptr[i].cuda_texture_obj = loadTexture(std::string(texture_path.C_Str()));
+		}
+		if (mat_ptr[i].cuda_texture_obj < 0)
+			printf("    Warning: texture load failed\n");
+		
+		mat_ptr[i].norm_color = make_float3(Kd.r, Kd.g, Kd.b);
+		mat_ptr[i].color = 255.0f * make_float3(Kd.r, Kd.g, Kd.b);
+		mat_ptr[i].emittance = 255.0f * make_float3(Ke.r, Ke.g, Ke.b);
 		mat_ptr[i].reflect_factor = d;
 		mat_ptr[i].refract_index = Ni;
 		
@@ -223,11 +311,12 @@ Triangle* loadTriangles(const aiScene* aiscene,
 	{
 		aiMesh* mesh = aiscene->mMeshes[m];
 
+		// load triangles
 		for (int i = loaded_trgs; i < loaded_trgs + mesh->mNumFaces; ++i) {
 			const aiFace& face = mesh->mFaces[i - loaded_trgs];
-			aiVector3D& va = mesh->mVertices[face.mIndices[0]];
-			aiVector3D& vb = mesh->mVertices[face.mIndices[1]];
-			aiVector3D& vc = mesh->mVertices[face.mIndices[2]];
+			const aiVector3D& va = mesh->mVertices[face.mIndices[0]];
+			const aiVector3D& vb = mesh->mVertices[face.mIndices[1]];
+			const aiVector3D& vc = mesh->mVertices[face.mIndices[2]];
 
 			// transform triangles using glm
 			glm::vec4 ga = transform * glm::vec4(va.x, va.y, va.z, 1.0f);
@@ -244,10 +333,14 @@ Triangle* loadTriangles(const aiScene* aiscene,
 			tr_host_tex_data[trg_tex_idx + 1] = make_float4(gb.x, gb.y, gb.z, 0.0f);
 			tr_host_tex_data[trg_tex_idx + 2] = make_float4(gc.x, gc.y, gc.z, 0.0f);
 
-			if (mesh->HasNormals()) {
-				aiVector3D& normal0 = mesh->mNormals[face.mIndices[0]];
-				aiVector3D& normal1 = mesh->mNormals[face.mIndices[1]];
-				aiVector3D& normal2 = mesh->mNormals[face.mIndices[2]];
+		}
+		// load normals
+		if (mesh->HasNormals()) {
+			for (int i = loaded_trgs; i < loaded_trgs + mesh->mNumFaces; ++i) {
+				const aiFace& face = mesh->mFaces[i - loaded_trgs];
+				const aiVector3D& normal0 = mesh->mNormals[face.mIndices[0]];
+				const aiVector3D& normal1 = mesh->mNormals[face.mIndices[1]];
+				const aiVector3D& normal2 = mesh->mNormals[face.mIndices[2]];
 
 				// transform normals using glm
 				glm::vec4 na = inv_transform * glm::vec4(normal0.x, normal0.y, normal0.z, 1.0f);
@@ -258,12 +351,29 @@ Triangle* loadTriangles(const aiScene* aiscene,
 				tr_host_ptr[i].norm_b = normalize(make_float3(nb.x, nb.y, nb.z));
 				tr_host_ptr[i].norm_c = normalize(make_float3(nc.x, nc.y, nc.z));
 
+				int trg_tex_idx = 6 * i;
 				tr_host_tex_data[trg_tex_idx + 3] = normalize(make_float4(na.x, na.y, na.z, 0.0f));
 				tr_host_tex_data[trg_tex_idx + 4] = normalize(make_float4(na.x, na.y, na.z, 0.0f));
 				tr_host_tex_data[trg_tex_idx + 5] = normalize(make_float4(na.x, na.y, na.z, 0.0f));
-			}
 
+			}
 		}
+		// load tex coords from 0 channel - currently only one channel supported
+		if (mesh->HasTextureCoords(0)) {
+			for (int i = loaded_trgs; i < loaded_trgs + mesh->mNumFaces; ++i) {
+				const aiFace& face = mesh->mFaces[i - loaded_trgs];
+				const aiVector3D& ta = mesh->mTextureCoords[0][face.mIndices[0]];
+				const aiVector3D& tb = mesh->mTextureCoords[0][face.mIndices[1]];
+				const aiVector3D& tc = mesh->mTextureCoords[0][face.mIndices[2]];
+
+				tr_host_ptr[i].tx_a = make_float2(ta.x, ta.y);
+				tr_host_ptr[i].tx_b = make_float2(tb.x, tb.y);
+				tr_host_ptr[i].tx_c = make_float2(tc.x, tc.y);
+
+				//printf("[%f,%f] [%f,%f] [%f,%f]\n", ta.x, ta.y, tb.x, tb.y, tc.x, tc.y);
+			}
+		}
+
 		loaded_trgs += mesh->mNumFaces;
 	}
 	cudaOk(cudaMalloc(&dv_tr_ptr, all_triangles * sizeof(Triangle)));
@@ -321,6 +431,22 @@ bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 		printf("  ERROR: Failed to load Mesh Object: %s\n", info->src_filename);
 		throw scene_file_error("Assimp failed to load file: " + path);
 	}
+
+	if (aiscene->HasTextures()) {
+		for (int i = 0; i < aiscene->mNumTextures; i++)
+		{
+			const aiTexture* aitex = aiscene->mTextures[i];
+			printf(" Loading texture[%d]: %s %dx%d\n", i, aitex->achFormatHint, aitex->mWidth, aitex->mHeight);
+			for (int x = 0; x < aitex->mWidth; x++)
+			{
+				for (int y = 0; y < aitex->mHeight; y++)
+				{
+					const aiTexel& tex = aitex->pcData[(aitex->mHeight) * y + x];
+				}
+			}
+		}
+	}
+
 	MeshGeometryData* gptr = (MeshGeometryData*)malloc(sizeof(MeshGeometryData));
 	MeshGeometryData* dv_gptr = NULL;
 	Triangle* trg_host_ptr = NULL;

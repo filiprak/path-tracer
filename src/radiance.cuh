@@ -37,11 +37,10 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 
 	// bounce ray
 	for (int bounce = 0; bounce < scene.camera.max_ray_bounces; ++bounce) {
-		int inters_obj_idx;
-		float3 inters_point, surf_normal;
-		float3 debug_mask = make_float3(1.0f);
-		const Material* mat;
-		if (!rayIntersectsScene(ray, scene, inters_obj_idx, mat, inters_point, surf_normal, debug_mask))
+		IntersectInfo ii;
+		ii.debug_mask = make_float3(1.0f);
+
+		if (!rayIntersectsScene(ray, scene, ii))
 #ifdef DEBUG_BBOXES
 			return 255.0f * (make_float3(1.0f) - debug_mask);
 #else
@@ -51,39 +50,45 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 #ifdef DEBUG_BBOXES
 		return 0.8 * 255.0f * (make_float3(1.0f) - debug_mask) + 0.2 * mat->color * fabs(dot(ray.direction, surf_normal));
 #endif
-		if (scene.camera.preview_mode)
-			return fabsf(dot(surf_normal, ray.direction)) * make_float3(190.0f);
-		// take hit object reference
-		/*if (obj.type == TriangleMeshObj) {
-			MeshGeometryData* md = (MeshGeometryData*)obj.geometry_data;
-			mat = md->meshes[mesh_idx].material;
-			printf("mesh: %d\n    Ka: [%.1f,%.1f,%.1f]\n    Ke: [%.1f,%.1f,%.1f]\n    d: %f, Ni: %f\n",
-				mesh_idx,
-				mat->norm_color.x, mat->norm_color.y, mat->norm_color.z,
-				mat->emittance.x, mat->emittance.y, mat->emittance.z,
-				mat->reflect_factor, mat->refract_index);
-		}*/
-		
-		/*if (!hit_refractive && bounce == 0)
-			hit_refractive = obj.material.type == Refractive;
-		if (hit_refractive)
-			debug_path[2 * bounce] = ray.originPoint;*/
+		const Material* mat = ii.imat;
+		if (scene.camera.preview_mode) {
+			float3 color;
+			if (mat->cuda_texture_obj != -1) {
+				float2 texuv = ii.bary_coords.x * ii.itrg.tx_a + ii.bary_coords.y * ii.itrg.tx_b + ii.bary_coords.z * ii.itrg.tx_c;
+				float4 texel = tex2D<float4>((cudaTextureObject_t)mat->cuda_texture_obj, texuv.x, 1.0f - texuv.y);
+				color = 255.0f * make_float3(texel.x, texel.y, texel.z);
+			}
+			else
+				color = mat->color;
+
+			float rdot = dot(ii.normal, ray.direction);
+			if (rdot < 0)
+				return /*-rdot * */(1.0*color + 0.0*make_float3(190.0f));
+			else return /*rdot * */(1.0*color + 0.0*make_float3(190.0f, 0, 0));
+		}
+
 
 		// shading pixels -------------------------------------------------
+		
 		switch (mat->type) {
 
 			// material cases
 			case Luminescent: radiance += mask * mat->emittance; return radiance;
-			case Diffusing: Diffuse_BRDF(ray, ray, surf_normal, inters_point, curand_s); break;
-			case Reflective: ReflectiveDiffuse_BRDF(ray, ray, mat->reflect_factor, surf_normal, inters_point, curand_s); break;
+			case Diffusing: Diffuse_BRDF(ray, ray, ii.normal, ii.ipoint, curand_s); break;
+			case Reflective: ReflectiveDiffuse_BRDF(ray, ray, mat->reflect_factor, ii.normal, ii.ipoint, curand_s); break;
 			case Refractive: Refractive_BRDF(ray, ray, mat->refract_index,
-				mat->reflect_factor, mask, surf_normal, inters_point, curand_s); break;
+				mat->reflect_factor, mask, ii.normal, ii.ipoint, curand_s); break;
 
 		}
-		// mask light with current object colour
-		mask *= mat->norm_color;
-		/*if (hit_refractive)
-			debug_path[2 * bounce + 1] = inters_point;*/
+		
+		// if material has texture then blend it with material color
+		if (mat->cuda_texture_obj != -1) {
+			float2 texuv = ii.bary_coords.x * ii.itrg.tx_a + ii.bary_coords.y * ii.itrg.tx_b + ii.bary_coords.z * ii.itrg.tx_c;
+			float4 texel = tex2D<float4>((cudaTextureObject_t)mat->cuda_texture_obj, texuv.x, texuv.y);
+			mask *= make_float3(texel.x, texel.y, texel.z);
+		} else 
+			// mask light with current object colour
+			mask *= mat->norm_color;
 	}
 
 	//print_4path(debug_path);

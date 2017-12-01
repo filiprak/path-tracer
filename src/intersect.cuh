@@ -7,11 +7,24 @@
 #include "cutil_math.h"
 #include "cudaUtility.h"
 
-#define EPSILON		0.00005f
+#define EPSILON		0.00000005f
+
+typedef struct {
+	float3 ipoint, normal, bary_coords;
+	Triangle itrg;
+
+	int iobj_index;
+	const Material* imat;
+
+	//debug
+	float3 debug_mask;
+
+} IntersectInfo;
+
 
 /* Möller–Trumbore ray-triangle intersection algorithm */
 __device__
-bool rayIntersectsTriangle(Ray& ray, float3& va, float3& vb, float3& vc, float& res_dist)
+bool rayIntersectsTriangle(Ray& ray, float3& va, float3& vb, float3& vc, float& res_dist, float& ru, float& rv)
 {
 	float3 edge1, edge2, h;
 	float a;
@@ -40,6 +53,8 @@ bool rayIntersectsTriangle(Ray& ray, float3& va, float3& vb, float3& vc, float& 
 	if (t > EPSILON) // ray intersection
 	{
 		res_dist = t;
+		ru = u;
+		rv = v;
 		return true;
 	}
 	// This means that there is a line intersection but not a ray intersection.
@@ -143,7 +158,14 @@ bool testBBoxIntersection(BBox& bbox, Ray& ray, float& tmin) {
 
 // Iteration loop version instead of recursive ray KDNode intersection
 __device__
-bool rayIntersectsKDNodeLOOP(Ray& ray, Triangle* trs, KDNode* flat_nodes, float3& norm, int& mat_idx, Triangle& itrg, float& tmin, float3& debug_mask) {
+bool rayIntersectsKDNodeLOOP(Ray& ray,
+							Triangle* trs,
+							KDNode* flat_nodes,
+							float3& bary_coords,
+							Triangle& itrg,
+							float& tmin,
+							float3& debug_mask) {
+
 	int curr_idx = 0;
 	bool intersects = false;
 
@@ -163,18 +185,18 @@ bool rayIntersectsKDNodeLOOP(Ray& ray, Triangle* trs, KDNode* flat_nodes, float3
 
 		if (node.left_idx == -1 && node.right_idx == -1) {
 			// we are in leaf node: testing all triangles from node
-			float t;
+			float t, u, v;
 			for (int i = 0; i < node.num_trgs; i++)
 			{
 				Triangle& trg = trs[node.trg_idxs[i]];
 				//if (dot(ray.direction, trg.norm_a) >= 0) continue;
-				if (rayIntersectsTriangle(ray, trg.a, trg.b, trg.c, t)) {
+				if (rayIntersectsTriangle(ray, trg.a, trg.b, trg.c, t, u, v)) {
 					intersects = true;
 					if (t < tmin) {
 						tmin = t;
-						norm = trg.norm_a;
-						mat_idx = trg.material_idx;
 						itrg = trg;
+						bary_coords.y = u;
+						bary_coords.z = v;
 					}
 				}
 			}
@@ -248,7 +270,7 @@ bool rayIntersectsKDNode(Ray& ray, Triangle* trs, int trg_tex, KDNode* node, flo
 		return int_left || int_right;
 	}
 	else { // leaf node of kd tree
-		float t;
+		float t, u, v;
 		int n_idx;
 		bool intersects = false;
 		for (int i = 0; i < node->num_trgs; i++)
@@ -270,7 +292,7 @@ bool rayIntersectsKDNode(Ray& ray, Triangle* trs, int trg_tex, KDNode* node, flo
 #else
 			Triangle& trg = trs[node->trg_idxs[i]];
 			//if (dot(ray.direction, trg.norm_a) >= 0) continue;
-			if (rayIntersectsTriangle(ray, trg.a, trg.b, trg.c, t)) {
+			if (rayIntersectsTriangle(ray, trg.a, trg.b, trg.c, t, u, v)) {
 				intersects = true;
 				if (t < tmin) {
 					tmin = t;
@@ -291,7 +313,15 @@ bool rayIntersectsKDNode(Ray& ray, Triangle* trs, int trg_tex, KDNode* node, flo
 }
 
 __device__
-bool rayIntersectsObject(Ray& ray, const WorldObject* obj, const Material*& mat, float3& hit_point, float3& hit_norm, float3& debug_mask) {
+bool rayIntersectsObject(Ray& ray,
+						const WorldObject* obj,
+						const Material*& mat,
+						Triangle& trg,
+						float3& hit_point,
+						float3& hit_norm,
+						float3& bary_coords,
+						float3& debug_mask) {
+
 	bool intersects = false;
 
 	if (obj->type == SphereObj) {
@@ -300,18 +330,16 @@ bool rayIntersectsObject(Ray& ray, const WorldObject* obj, const Material*& mat,
 	}
 	else if (obj->type == TriangleMeshObj) {
 		MeshGeometryData* gdata = (MeshGeometryData*)obj->geometry_data;
-		int res_mat_idx = 0;
-		Triangle trg;
 
 		float tmin = HUGE_VALF;
 #ifdef USE_KD_TREES
 	#ifdef USE_SHORT_STACK_LOOP
-		intersects = rayIntersectsKDNodeLOOP(ray, gdata->triangles, gdata->flat_kd_root, hit_norm, res_mat_idx, trg, tmin, debug_mask);
+		intersects = rayIntersectsKDNodeLOOP(ray, gdata->triangles, gdata->flat_kd_root, bary_coords, trg, tmin, debug_mask);
 	#else
 		intersects = rayIntersectsKDNode(ray, gdata->triangles, gdata->triangles_tex, gdata->kdroot, hit_norm, res_mat_idx, tmin, debug_mask);
 	#endif
 #else
-		float t;
+		float t, u, v;
 		int n_idx; //normal index
 		for (int i = 0; i < gdata->num_triangles; i++)
 		{
@@ -329,7 +357,7 @@ bool rayIntersectsObject(Ray& ray, const WorldObject* obj, const Material*& mat,
 	#ifdef USE_TRIANGLE_TEXTURE_MEM
 			if (rayIntersectsTriangle(ray, make_float3(a.x, a.y, a.z),
 				make_float3(b.x, b.y, b.z),
-				make_float3(c.x, c.y, c.z), t)) {
+				make_float3(c.x, c.y, c.z), t, u, v)) {
 				intersects = true;
 				if (t < tmin) {
 					tmin = t;
@@ -337,7 +365,7 @@ bool rayIntersectsObject(Ray& ray, const WorldObject* obj, const Material*& mat,
 				}
 			}
 	#else
-			if (rayIntersectsTriangle(ray, trg.a, trg.b, trg.c, t)) {
+			if (rayIntersectsTriangle(ray, trg.a, trg.b, trg.c, t, u, v)) {
 				intersects = true;
 				if (t < tmin) {
 					tmin = t;
@@ -350,9 +378,10 @@ bool rayIntersectsObject(Ray& ray, const WorldObject* obj, const Material*& mat,
 #endif
 		if (intersects)
 		{
-			cuassert(trg.material_idx == res_mat_idx);
 			hit_point = ray.originPoint + tmin * ray.direction;
-			mat = &(obj->materials[res_mat_idx]);
+			bary_coords.x = 1.0f - bary_coords.y - bary_coords.z;
+			hit_norm = normalize(bary_coords.x * trg.norm_a + bary_coords.y * trg.norm_b + bary_coords.z * trg.norm_c);
+			mat = &(obj->materials[trg.material_idx]);
 
 #ifndef USE_KD_TREES
 	#ifdef USE_TRIANGLE_TEXTURE_MEM
@@ -369,25 +398,28 @@ bool rayIntersectsObject(Ray& ray, const WorldObject* obj, const Material*& mat,
 }
 
 __device__
-bool rayIntersectsScene(Ray& ray, Scene& scene, int& res_obj_idx, const Material*& mat,
-	float3& hit_point, float3& hit_norm, float3& debug_mask) {
+bool rayIntersectsScene(Ray& ray, Scene& scene, IntersectInfo& ii) {
 	bool intersects = false;
 	float closest_dist = HUGE_VALF;
-	float3 inters_point, inters_norm;
+	float3 inters_point, inters_norm, bary_coords, debug_mask;
 
 	for (int i = 0; i < scene.num_wobjects; ++i) {
 		const WorldObject* obj = &(scene.dv_wobjects_ptr[i]);
 		const Material* i_mat = &(obj->materials[0]);
+		Triangle itrg;
 
-		if (rayIntersectsObject(ray, obj, i_mat, inters_point, inters_norm, debug_mask)) {
+		if (rayIntersectsObject(ray, obj, i_mat, itrg, inters_point, inters_norm, bary_coords, debug_mask)) {
 			intersects = true;
 			float inters_dist = length(inters_point - ray.originPoint);
 			if (inters_dist < closest_dist) {
 				closest_dist = inters_dist;
-				res_obj_idx = i;
-				hit_point = inters_point;
-				hit_norm = inters_norm;
-				mat = i_mat;
+				ii.iobj_index = i;
+				ii.ipoint = inters_point;
+				ii.normal = inters_norm;
+				ii.imat = i_mat;
+				ii.bary_coords = bary_coords;
+				ii.debug_mask = debug_mask;
+				ii.itrg = itrg;
 			}
 		};
 	}

@@ -29,6 +29,7 @@ typedef enum {
 typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 	MaterialType type;
 	float3 color, norm_color;  // mtl: Ka
+	int cuda_texture_obj;
 
 	// for light materials
 	float3 emittance; // mtl: Ke
@@ -43,9 +44,10 @@ typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 
 
 typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
-	float3 a,b,c;
-	float3 norm_a, norm_b, norm_c;
-	int material_idx;
+	float3 a,b,c; // triangle vertices
+	float3 norm_a, norm_b, norm_c; // normals in triangle vertices
+	float2 tx_a, tx_b, tx_c; // texture coords of triangle vertices
+	int material_idx; // material index of the triangle
 } Triangle;
 
 
