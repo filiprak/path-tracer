@@ -42,16 +42,20 @@ void initWorldObjSources(const Json::Value& jscene) {
 	world_obj_sources.loadFuncMapping[TriangleMeshObj] = loadTriangleMeshObj;
 	
 	// parse scene from json description
-	int num_objects = min((jscene["objects"].isArray() ? jscene["objects"].size() : 0), MAX_OBJECTS_NUM);
-	scene.num_wobjects = world_obj_sources.num_objects = num_objects;
-
-	for (int i = 0; i < num_objects; i++)
+	int num_jobjects = min((jscene["objects"].isArray() ? jscene["objects"].size() : 0), MAX_OBJECTS_NUM);
+	
+	int obj_idx = 0;
+	for (int i = 0; i < num_jobjects; i++)
 	{
 		const Json::Value& jobj = jscene["objects"][i];
+		bool render = jobj["render"].asBool();
+		if (!render) {
+			continue;
+		}
 		std::string type = jobj["type"].asString();
 
 		if (!type.compare("sphere")) {
-			world_obj_sources.sources[i].type = SphereObj;
+			world_obj_sources.sources[obj_idx].type = SphereObj;
 
 			Material msphere;
 			msphere.norm_color = resolveFloat3(jobj["material"]["Ka"]);
@@ -66,10 +70,11 @@ void initWorldObjSources(const Json::Value& jscene) {
 			sinfo->material = msphere;
 			sinfo->position = resolveFloat3(jobj["position"]);
 			sinfo->radius = resolveFloat(jobj["radius"]);
-			world_obj_sources.sources[i].worldObjectInfo = sinfo;
+			world_obj_sources.sources[obj_idx].worldObjectInfo = sinfo;
+			obj_idx++;
 		}
 		else if (!type.compare("mesh")) {
-			world_obj_sources.sources[i].type = TriangleMeshObj;
+			world_obj_sources.sources[obj_idx].type = TriangleMeshObj;
 			TriangleMeshObjInfo* minfo = (TriangleMeshObjInfo*)malloc(sizeof(TriangleMeshObjInfo));
 			const char* src = jobj["src"].asCString();
 			strcpy_s(minfo->src_filename, src);
@@ -94,14 +99,17 @@ void initWorldObjSources(const Json::Value& jscene) {
 				}
 			}
 			minfo->transform = transform;
-			world_obj_sources.sources[i].worldObjectInfo = minfo;
+			world_obj_sources.sources[obj_idx].worldObjectInfo = minfo;
+			obj_idx++;
 		}
 		else {
 			freeWorldObjects();
 			throw scene_file_error("Unknown object type, supported types: mesh/sphere");
 		}
-	}
-	
+	}// for
+
+	// set scene object number
+	scene.num_wobjects = world_obj_sources.num_objects = obj_idx;
 }
 
 void freeWorldObjSources() {
@@ -116,7 +124,7 @@ void freeWorldObjSources() {
 __host__
 cudaTextureObject_t loadTexture(const std::string src_path)
 {
-	int width, height, channels;
+	int width = 0, height = 0, channels = 0;
 	float* img = stbi_loadf(src_path.c_str(), &width, &height, &channels, 0);
 	if (!img) // failed to load texture file
 		return -1;
@@ -127,23 +135,26 @@ cudaTextureObject_t loadTexture(const std::string src_path)
 		for (int col = 0; col < width; col++)
 		{
 			int index = channels * (row * width + col);
-			float rgba[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			float rgba[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 			for (int channel = 0; channel < channels; channel++)
 				rgba[channel] = img[index + channel];
-			if (channels < 3)
-				host_tex_data[row * width + col] = make_float4(rgba[0], rgba[0], rgba[0], rgba[1]);
+
+			int host_index = (height - row - 1) * width + (col);
+			if (channels < 2)
+				host_tex_data[host_index] = make_float4(rgba[0], rgba[0], rgba[0], rgba[3]);
+			else if (channels < 3)
+				host_tex_data[host_index] = make_float4(rgba[0], rgba[0], rgba[0], rgba[1]);
 			else
-				host_tex_data[row * width + col] = make_float4(rgba[0], rgba[1], rgba[2], rgba[3]);
+				host_tex_data[host_index] = make_float4(rgba[0], rgba[1], rgba[2], rgba[3]);
 		}
 	}
 	stbi_image_free(img);
 	// allocate and copy pitch2D on cuda device
-	float4* dev_tex_data;
+	float4* dev_tex_data = NULL;
 	size_t pitch;
 	cudaOk(cudaMallocPitch(&dev_tex_data, &pitch, width * sizeof(float4), height));
 	cudaOk(cudaMemcpy2D(dev_tex_data, pitch, host_tex_data,
-		width * sizeof(float4), height * sizeof(float4),
-		height, cudaMemcpyHostToDevice));
+		width * sizeof(float4), width * sizeof(float4), height, cudaMemcpyHostToDevice));
 	dv_mem_ptrs.push_back(dev_tex_data);
 	free(host_tex_data);
 
@@ -169,7 +180,8 @@ cudaTextureObject_t loadTexture(const std::string src_path)
 	cudaTextureObject_t tex = 0;
 	cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL);
 	dv_textures.push_back(tex);
-	checkCudaError("loadTexture()");
+	if (checkCudaError("loadTexture()"))
+		return -1;
 	return tex;
 }
 
@@ -204,7 +216,8 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 		aiColor3D Ka, Kd, Ke;
 		float d, Ni;
 		aiString texture_path;
-		unsigned int uvindex;
+
+		printf("  Loading material[%d]: name: %s, type: %s\n", i, name.C_Str(), mat_type.c_str());
 
 		material->Get(AI_MATKEY_COLOR_AMBIENT, Ka);
 		material->Get(AI_MATKEY_COLOR_DIFFUSE, Kd);
@@ -213,27 +226,30 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 		material->Get(AI_MATKEY_OPACITY, d);
 		
 		mat_ptr[i].cuda_texture_obj = -1;
-		if (material->GetTextureCount(aiTextureType_AMBIENT) > 0) {
-			material->GetTexture(aiTextureType_AMBIENT, 0, &texture_path, NULL, &uvindex);
+		int num_tex_ambient = material->GetTextureCount(aiTextureType_AMBIENT);
+		int num_tex_diffuse = material->GetTextureCount(aiTextureType_DIFFUSE);
+		int num_tex_emissive = material->GetTextureCount(aiTextureType_EMISSIVE);
+		if (num_tex_ambient > 0) {
+			material->GetTexture(aiTextureType_AMBIENT, 0, &texture_path);
 			printf("    Loading ambient texture: %s\n", texture_path.C_Str());
 			mat_ptr[i].cuda_texture_obj = loadTexture(std::string(texture_path.C_Str()));
 		}
-		else if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
-			material->GetTexture(aiTextureType_DIFFUSE, 0, &texture_path, NULL, &uvindex);
+		else if (num_tex_diffuse > 0) {
+			material->GetTexture(aiTextureType_DIFFUSE, 0, &texture_path);
 			printf("    Loading diffuse texture: %s\n", texture_path.C_Str());
 			mat_ptr[i].cuda_texture_obj = loadTexture(std::string(texture_path.C_Str()));
 		}
-		else if (material->GetTextureCount(aiTextureType_EMISSIVE) > 0) {
-			material->GetTexture(aiTextureType_EMISSIVE, 0, &texture_path, NULL, &uvindex);
+		else if (num_tex_emissive > 0) {
+			material->GetTexture(aiTextureType_EMISSIVE, 0, &texture_path);
 			printf("    Loading emissive texture: %s\n", texture_path.C_Str());
 			mat_ptr[i].cuda_texture_obj = loadTexture(std::string(texture_path.C_Str()));
 		}
-		if (mat_ptr[i].cuda_texture_obj < 0)
+		if (mat_ptr[i].cuda_texture_obj < 0 && num_tex_ambient + num_tex_diffuse + num_tex_emissive > 0)
 			printf("    Warning: texture load failed\n");
 		
 		mat_ptr[i].norm_color = make_float3(Kd.r, Kd.g, Kd.b);
 		mat_ptr[i].color = 255.0f * make_float3(Kd.r, Kd.g, Kd.b);
-		mat_ptr[i].emittance = 255.0f * make_float3(Ke.r, Ke.g, Ke.b);
+		mat_ptr[i].emittance = make_float3(Ke.r, Ke.g, Ke.b);
 		mat_ptr[i].reflect_factor = d;
 		mat_ptr[i].refract_index = Ni;
 		
@@ -255,7 +271,7 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 			mat_ptr[i].norm_color = make_float3(0.75f);
 			mat_ptr[i].color = 255.0f * mat_ptr[i].norm_color;
 		}
-		printf("  Loaded material[%d]: name: %s, type: %s\n", i, name.C_Str(), mat_type.c_str());
+		
 		/*printf("    Ka: [%.1f,%.1f,%.1f]\n    Ke: [%.1f,%.1f,%.1f]\n    d: %f, Ni: %f\n",
 			mat_ptr[i].norm_color.x, mat_ptr[i].norm_color.y, mat_ptr[i].norm_color.z,
 			mat_ptr[i].emittance.x, mat_ptr[i].emittance.y, mat_ptr[i].emittance.z,

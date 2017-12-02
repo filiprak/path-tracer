@@ -27,6 +27,7 @@ typedef struct {
 		float screen_dist;
 
 		float aa_jitter;
+		float gamma_corr; // gamma image correction exponent
 
 	} projection;
 
@@ -53,6 +54,7 @@ void rotateHCamera(float);
 
 void updateMaxRayBnc(int);
 void updateAajitter(float);
+void updateGamma(float);
 void togglePrevMode();
 void toggleTextures();
 

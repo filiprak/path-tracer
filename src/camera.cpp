@@ -40,6 +40,7 @@ void initCamera(const Json::Value& jcam) {
 	c.projection.screen_halfsize.y = screenHeight / 2.0f;
 	c.projection.screen_halfsize.x = c.projection.screen_halfsize.y * (float)viewWidth / (float)viewHeight;
 	c.projection.aa_jitter = 2.0f;
+	c.projection.gamma_corr = 0.5f;
 
 	c.preview_mode = true;
 	c.texture_enabled = false;
@@ -116,6 +117,14 @@ void updateAajitter(float delta) {
 	c.changed = true;
 }
 
+void updateGamma(float delta) {
+	Camera& c = scene.camera;
+	float g = c.projection.gamma_corr + delta;
+	if (g <= 0.0)
+		return;
+	c.projection.gamma_corr = g;
+}
+
 void togglePrevMode() {
 	scene.camera.preview_mode = !scene.camera.preview_mode;
 	scene.camera.changed = true;
@@ -137,6 +146,7 @@ void printCamInfo() {
 	printf("> h_ang:            %.3f\n", c.h_ang);
 	printf("> max_ray_bounces:  %d\n", c.max_ray_bounces);
 	printf("> aa ray jitter:    %.3f\n", c.projection.aa_jitter);
+	printf("> image gamma:      %.3f\n", c.projection.gamma_corr);
 	/* debug
 	printf("> dot(dir,up):        %f\n", dot(c.direction, c.up));
 	printf("> dot(dir,right):     %f\n", dot(c.direction, c.right));

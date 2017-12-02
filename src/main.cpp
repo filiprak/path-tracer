@@ -41,9 +41,15 @@ void printProgramConfig() {
 bool parseJsonScene(Json::Value& root, std::string& errmsg) {
 	Json::Reader reader;
 	std::ifstream jstream(input_file, std::ifstream::binary);
+	if (!jstream.is_open()) {
+		errmsg = "Unable to open file: " + input_file;
+		return false;
+	}
 	bool parsingSuccessful = reader.parse(jstream, root, false);
 	if (!parsingSuccessful)
 		errmsg = reader.getFormattedErrorMessages();
+
+	jstream.close();
 	return parsingSuccessful;
 }
 
@@ -54,6 +60,7 @@ int main(int argc, char* argv[]) {
 		input_file = std::string(argv[1]);
 	else {
 		printf("Usage: command <scene_file.json>.");
+		getchar();
 		exit(EXIT_FAILURE);
 	}
 
@@ -62,24 +69,30 @@ int main(int argc, char* argv[]) {
 	std::string errmsg;
 	if (!parseJsonScene(jscene, errmsg)) {
 		printf("Error in scene JSON: %s\n", errmsg.c_str());
+		getchar();
 		exit(EXIT_FAILURE);
 	}
 	
 	int dvNum = printCudaDevicesInfo();
 	if (dvNum < 1) {
 		printf("CUDA devices not found.\nPlease ensure you have it installed.");
+		getchar();
 		exit(EXIT_FAILURE);
 	}
 
 	// Choose which GPU to run on, change this on a multi-GPU system.
 	int cuda_device_id = 0;
 	cudaSetDevice(cuda_device_id);
-	if (checkCudaError("Unable to set CUDA device"))
+	if (checkCudaError("Unable to set CUDA device")) {
+		getchar();
 		exit(EXIT_FAILURE);
+	}
 
 	cudaDeviceSetLimit(cudaLimitStackSize, (size_t)MAX_STACK_CUDA_SIZE);
-	if (checkCudaError("Unable to set CUDA device stack size.\n"))
+	if (checkCudaError("Unable to set CUDA device stack size.\n")) {
+		getchar();
 		exit(EXIT_FAILURE);
+	}
 
 	try {
 		printf("Initializing world elements...\n");
@@ -90,10 +103,12 @@ int main(int argc, char* argv[]) {
 	}
 	catch (const Json::Exception& je) {
 		printf("Error while parsing scene file: %s\n", je.what());
+		getchar();
 		exit(EXIT_FAILURE);
 	}
 	catch (const scene_file_error& err) {
 		printf("Error while loading scene: %s\n", err.what());
+		getchar();
 		exit(EXIT_FAILURE);
 	}
 

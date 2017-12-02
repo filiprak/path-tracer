@@ -23,13 +23,13 @@ __global__
 void generatePrimaryRays(Camera cam, Ray* rays);
 
 __device__
-inline void init_ray(Ray& r, float3& orig, float3& dir) {
-	r.direction = dir;
-	r.originPoint = orig;
-	r.inv_direction = make_float3(1 / dir.x, 1 / dir.y, 1 / dir.z);
-	r.sign[0] = (r.inv_direction.x < 0);
-	r.sign[1] = (r.inv_direction.y < 0);
-	r.sign[2] = (r.inv_direction.z < 0);
+inline void init_ray(Ray* r, float3& orig, float3& dir) {
+	r->direction = dir;
+	r->originPoint = orig;
+	r->inv_direction = make_float3(1 / dir.x, 1 / dir.y, 1 / dir.z);
+	r->sign[0] = (r->inv_direction.x < 0);
+	r->sign[1] = (r->inv_direction.y < 0);
+	r->sign[2] = (r->inv_direction.z < 0);
 }
 
 __device__
@@ -88,7 +88,7 @@ void generatePrimaryRays(Camera cam, Ray* rays, float3* pix_midpoints)
 			(cam.projection.screen_halfsize.y - y * pix_side - pix_side / 2.0f) * normalize(cam.up);
 
 		// init primary ray
-		init_ray(rays[index], cam.position, normalize(screenDistanceVec + pixVector));
+		init_ray(&(rays[index]), cam.position, normalize(screenDistanceVec + pixVector));
 
 		// store middle pixel point
 		pix_midpoints[index] = cam.position + screenDistanceVec + pixVector;

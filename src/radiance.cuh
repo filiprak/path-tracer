@@ -42,13 +42,13 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 
 		if (!rayIntersectsScene(&ray, scene, ii))
 #ifdef DEBUG_BBOXES
-			return 255.0f * (make_float3(1.0f) - debug_mask);
+			return (make_float3(1.0f) - debug_mask);
 #else
 			return make_float3(0);
 #endif
 		
 #ifdef DEBUG_BBOXES
-		return 0.8 * 255.0f * (make_float3(1.0f) - debug_mask) + 0.2 * mat->color * fabs(dot(ray.direction, surf_normal));
+		return 0.8 * (make_float3(1.0f) - debug_mask) + 0.2 * mat->color * fabs(dot(ray.direction, surf_normal));
 #endif
 		const Material* mat = ii.imat;
 
@@ -56,24 +56,28 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 		if (scene.camera.preview_mode) {
 			float3 tex_color = make_float3(0.0f);
 			float tex_blend = 0.0f;
+			float alpha = 0.0f;
 			if (scene.camera.texture_enabled && mat->cuda_texture_obj > -1) {
 				float2 texuv = ii.bary_coords.x * ii.itrg.tx_a + ii.bary_coords.y * ii.itrg.tx_b + ii.bary_coords.z * ii.itrg.tx_c;
-				float4 texel = tex2D<float4>((cudaTextureObject_t)mat->cuda_texture_obj, texuv.x, 1.0f - texuv.y);
-				tex_color = 255.0f * make_float3(texel.x, texel.y, texel.z);
+				float4 texel = tex2D<float4>((cudaTextureObject_t)mat->cuda_texture_obj, texuv.x, texuv.y);
+				alpha = texel.w;
+				tex_color = make_float3(texel.x, texel.y, texel.z);
 				tex_blend = 0.5f;
 			}
 
 			float rdot = dot(ii.normal, ray.direction);
 			if (rdot < 0)
-				return -rdot * (tex_blend*tex_color + (1.0f - tex_blend) * make_float3(190.0f));
-			else return rdot * (tex_blend*tex_color + (1.0f - tex_blend) * make_float3(190.0f, 0, 0));
+				return -rdot * (alpha*tex_blend*tex_color + (1.0f - tex_blend) * make_float3(1.0f));
+			else return rdot * (tex_blend*tex_color + (1.0f - tex_blend) * make_float3(1.0f, 0, 0));
 		}
 
 
 		// shading pixels in normal mode-------------------------------------------------
 		switch (mat->type) {
 			// material cases
-			case Diffusing: Diffuse_BRDF(&ray, ii.normal, ii.ipoint, curand_s); break;
+			case Diffusing: {
+				Diffuse_BRDF(&ray, ii.normal, ii.ipoint, curand_s); break;
+			}
 			case Reflective: ReflectiveDiffuse_BRDF(&ray, mat->reflect_factor, ii.normal, ii.ipoint, curand_s); break;
 			case Refractive: Refractive_BRDF(&ray, mat->refract_index,
 				mat->reflect_factor, mask, ii.normal, ii.ipoint, curand_s); break;
@@ -83,7 +87,7 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 		if (scene.camera.texture_enabled && mat->cuda_texture_obj > -1) {
 			float2 texuv = ii.bary_coords.x * ii.itrg.tx_a + ii.bary_coords.y * ii.itrg.tx_b + ii.bary_coords.z * ii.itrg.tx_c;
 			float4 texel = tex2D<float4>((cudaTextureObject_t)mat->cuda_texture_obj, texuv.x, texuv.y);
-			mask *= 0.5f * make_float3(texel.x, texel.y, texel.z) + 0.5f * mat->norm_color;
+			mask *= 1.0f * make_float3(texel.x, texel.y, texel.z) + 0.0f * mat->norm_color;
 
 		} else // mask light with current object colour
 			mask *= mat->norm_color;

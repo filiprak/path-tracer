@@ -26,7 +26,7 @@ inline void Diffuse_BRDF(	Ray* in_ray,
 	float sinr1, cosr1;
 	__sincosf(r1, &sinr1, &cosr1);
 
-	init_ray(*in_ray, inters_point + surf_normal * 0.00005f,
+	init_ray(in_ray, inters_point + surf_normal * 0.00005f,
 		normalize(u * cosr1 * r2s + v * sinr1*r2s + surf_normal * __fsqrt_rn(1 - r2)));
 }
 
@@ -51,11 +51,11 @@ inline void ReflectiveDiffuse_BRDF(	Ray* in_ray,
 		float sinr1, cosr1;
 		__sincosf(r1, &sinr1, &cosr1);
 
-		init_ray(*in_ray, new_orig, normalize(u * cosr1 * r2s + v * sinr1*r2s + surf_normal * __fsqrt_rn(1 - r2)));
+		init_ray(in_ray, new_orig, normalize(u * cosr1 * r2s + v * sinr1*r2s + surf_normal * __fsqrt_rn(1 - r2)));
 	}
 	else {
 		// perfect reflection
-		init_ray(*in_ray, new_orig, normalize(reflect(in_ray->direction, surf_normal)));
+		init_ray(in_ray, new_orig, normalize(reflect(in_ray->direction, surf_normal)));
 	}
 	
 }
@@ -86,7 +86,7 @@ inline void Refractive_BRDF(Ray* in_ray,
 
 	if (cos2refr < 0.0f) // total internal reflection 
 	{
-		init_ray(*in_ray, inters_point + ray_oriented_norm * REFL_BIAS,
+		init_ray(in_ray, inters_point + ray_oriented_norm * REFL_BIAS,
 			reflect(in_ray->direction, ray_oriented_norm));
 	}
 	else // refraction of light ray
@@ -114,13 +114,13 @@ inline void Refractive_BRDF(Ray* in_ray,
 		if (curand_uniform(curand_s) < refl_factor)
 		{//reflection
 			mask *= (Reflectance / EnergyScale);
-			init_ray(*in_ray, inters_point + ray_oriented_norm * REFL_BIAS,
+			init_ray(in_ray, inters_point + ray_oriented_norm * REFL_BIAS,
 				reflect(in_ray->direction, surf_normal));
 		}
 		else
 		{//transmision
 			mask *= ((1.0f - Reflectance) / (1.0f - EnergyScale));
-			init_ray(*in_ray, inters_point - ray_oriented_norm * REFL_BIAS_LOW,
+			init_ray(in_ray, inters_point - ray_oriented_norm * REFL_BIAS_LOW,
 				trans_ray_dir);
 		}
 	}

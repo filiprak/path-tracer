@@ -260,6 +260,9 @@ static void viewKeyCallback(GLFWwindow* window, int key, int scancode, int actio
 
 		key == GLFW_KEY_LEFT_BRACKET ? updateAajitter(-0.1f * scale) :
 			(key == GLFW_KEY_RIGHT_BRACKET ? updateAajitter(0.1f * scale) : NULL);
+
+		key == GLFW_KEY_9 ? updateGamma(-0.05f * scale) :
+			(key == GLFW_KEY_0 ? updateGamma(0.05f * scale) : NULL);
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)

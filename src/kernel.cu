@@ -34,17 +34,18 @@ void kernelCleanUp()
 
 //Kernel that writes the image to the OpenGL PBO directly.
 __global__
-void writeImageToPBO(uchar4* pbo, int width, int height, int iter, float4* image) {
+void writeImageToPBO(uchar4* pbo, float gamma, int width, int height, int iter, float4* image) {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
 	if (x < width && y < height) {
 		int index = x + (y * width);
 
+		float inv_iter = 1 / (float)iter;
 		pbo[index].w = 0.0f;
-		pbo[index].x = clamp((image[index].x) / (float)iter, 0.0f, 255.0f);
-		pbo[index].y = clamp((image[index].y) / (float)iter, 0.0f, 255.0f);
-		pbo[index].z = clamp((image[index].z) / (float)iter, 0.0f, 255.0f);
+		pbo[index].x = 255.0f * powf(clamp((image[index].x) * inv_iter, 0.0f, 1.0f), gamma);
+		pbo[index].y = 255.0f * powf(clamp((image[index].y) * inv_iter, 0.0f, 1.0f), gamma);
+		pbo[index].z = 255.0f * powf(clamp((image[index].z) * inv_iter, 0.0f, 1.0f), gamma);
 	}
 }
 
@@ -76,7 +77,12 @@ cudaError_t kernelMain(uchar4* pbo, int iter)
 	}
 
 	// write results to pbo
-	writeImageToPBO << <blocksPerGrid, blockSize >> >(pbo, cam.projection.width, cam.projection.height, iter, device_accum_image);
+	writeImageToPBO << <blocksPerGrid, blockSize >> >(	pbo,
+														cam.projection.gamma_corr,
+														cam.projection.width,
+														cam.projection.height,
+														iter,
+														device_accum_image);
 	checkCudaError("run sendImageToPBO<<<>>>()");
     
     cudaDeviceSynchronize();

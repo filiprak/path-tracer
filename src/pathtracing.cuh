@@ -21,4 +21,4 @@ __host__
 void runPathTracing(int, int);
 
 __device__
-inline void init_ray(Ray&, float3&, float3&);
+inline void init_ray(Ray*, float3&, float3&);

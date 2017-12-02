@@ -162,7 +162,7 @@ bool rayIntersectsKDNodeLOOP(Ray* ray,
 							Triangle* trs,
 							KDNode* flat_nodes,
 							float3* bary_coords,
-							Triangle* itrg,
+							Triangle*& itrg,
 							float* tmin,
 							float3* debug_mask) {
 
@@ -194,7 +194,7 @@ bool rayIntersectsKDNodeLOOP(Ray* ray,
 					intersects = true;
 					if (t < *tmin) {
 						*tmin = t;
-						*itrg = trg;
+						itrg = &trg;
 						bary_coords->y = u;
 						bary_coords->z = v;
 					}
@@ -314,7 +314,7 @@ __device__
 bool rayIntersectsObject(Ray* ray,
 						const WorldObject* obj,
 						const Material*& mat,
-						Triangle* trg,
+						Triangle*& trg,
 						float3* hit_point,
 						float3* hit_norm,
 						float3* bary_coords,
@@ -376,9 +376,9 @@ bool rayIntersectsObject(Ray* ray,
 #endif
 		if (intersects)
 		{
-			*hit_point = ray->originPoint + tmin * ray->direction;
+			*hit_point = ray->originPoint + tmin * (ray->direction);
 			bary_coords->x = 1.0f - bary_coords->y - bary_coords->z;
-			*hit_norm = normalize(bary_coords->x * trg->norm_a + bary_coords->y * trg->norm_b + bary_coords->z * trg->norm_c);
+			*hit_norm = normalize(bary_coords->x * (trg->norm_a) + bary_coords->y * (trg->norm_b) + bary_coords->z * (trg->norm_c));
 			mat = &(obj->materials[trg->material_idx]);
 
 #ifndef USE_KD_TREES
@@ -404,9 +404,9 @@ bool rayIntersectsScene(Ray* ray, Scene& scene, IntersectInfo& ii) {
 	for (int i = 0; i < scene.num_wobjects; ++i) {
 		const WorldObject* obj = &(scene.dv_wobjects_ptr[i]);
 		const Material* i_mat = &(obj->materials[0]);
-		Triangle itrg;
+		Triangle* itrg = NULL;
 
-		if (rayIntersectsObject(ray, obj, i_mat, &itrg, &inters_point, &inters_norm, &bary_coords, &debug_mask)) {
+		if (rayIntersectsObject(ray, obj, i_mat, itrg, &inters_point, &inters_norm, &bary_coords, &debug_mask)) {
 			intersects = true;
 			float inters_dist = length(inters_point - ray->originPoint);
 			if (inters_dist < closest_dist) {
@@ -417,7 +417,8 @@ bool rayIntersectsScene(Ray* ray, Scene& scene, IntersectInfo& ii) {
 				ii.imat = i_mat;
 				ii.bary_coords = bary_coords;
 				ii.debug_mask = debug_mask;
-				ii.itrg = itrg;
+				if (itrg != NULL)
+					ii.itrg = *itrg;
 			}
 		};
 	}
