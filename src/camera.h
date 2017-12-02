@@ -35,6 +35,7 @@ typedef struct {
 
 	// mesh preview mode
 	bool preview_mode;
+	bool texture_enabled;
 
 	// max ray bounces number
 	int max_ray_bounces;
@@ -53,5 +54,6 @@ void rotateHCamera(float);
 void updateMaxRayBnc(int);
 void updateAajitter(float);
 void togglePrevMode();
+void toggleTextures();
 
 void printCamInfo();

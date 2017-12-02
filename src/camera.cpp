@@ -41,6 +41,8 @@ void initCamera(const Json::Value& jcam) {
 	c.projection.screen_halfsize.x = c.projection.screen_halfsize.y * (float)viewWidth / (float)viewHeight;
 	c.projection.aa_jitter = 2.0f;
 
+	c.preview_mode = true;
+	c.texture_enabled = false;
 	c.changed = false;
 	c.max_ray_bounces = MAX_NUM_RAY_BOUNCES;
 }
@@ -116,6 +118,11 @@ void updateAajitter(float delta) {
 
 void togglePrevMode() {
 	scene.camera.preview_mode = !scene.camera.preview_mode;
+	scene.camera.changed = true;
+}
+
+void toggleTextures() {
+	scene.camera.texture_enabled = !scene.camera.texture_enabled;
 	scene.camera.changed = true;
 }
 

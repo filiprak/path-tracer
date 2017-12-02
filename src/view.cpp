@@ -231,7 +231,9 @@ static void viewKeyCallback(GLFWwindow* window, int key, int scancode, int actio
 {
 	printf("viewKeyCallback();\n");
 	int rcontrol_pressed = glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
+	int lcontrol_pressed = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
 	float scale = rcontrol_pressed ? 3.0f : 1.0f;
+	scale *= lcontrol_pressed ? 10.0f : 1.0f;
 
 	Camera& cam = scene.camera;
 
@@ -245,6 +247,10 @@ static void viewKeyCallback(GLFWwindow* window, int key, int scancode, int actio
 	}
 	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
 		togglePrevMode();
+		return;
+	}
+	if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) {
+		toggleTextures();
 		return;
 	}
 

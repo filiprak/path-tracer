@@ -56,6 +56,7 @@ void initWorldObjSources(const Json::Value& jscene) {
 			Material msphere;
 			msphere.norm_color = resolveFloat3(jobj["material"]["Ka"]);
 			msphere.color = 255.0f * msphere.norm_color;
+			msphere.cuda_texture_obj = -1;
 			msphere.type = resolveMatType(jobj["material"]["type"]);
 			msphere.emittance = resolveFloat3(jobj["material"]["Ke"]);
 			msphere.reflect_factor = resolveFloat(jobj["material"]["d"]);
@@ -211,7 +212,7 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 		material->Get(AI_MATKEY_REFRACTI, Ni);
 		material->Get(AI_MATKEY_OPACITY, d);
 		
-		mat_ptr[i].cuda_texture_obj = 0;
+		mat_ptr[i].cuda_texture_obj = -1;
 		if (material->GetTextureCount(aiTextureType_AMBIENT) > 0) {
 			material->GetTexture(aiTextureType_AMBIENT, 0, &texture_path, NULL, &uvindex);
 			printf("    Loading ambient texture: %s\n", texture_path.C_Str());

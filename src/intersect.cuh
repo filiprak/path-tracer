@@ -24,27 +24,27 @@ typedef struct {
 
 /* Möller–Trumbore ray-triangle intersection algorithm */
 __device__
-bool rayIntersectsTriangle(Ray& ray, float3& va, float3& vb, float3& vc, float& res_dist, float& ru, float& rv)
+bool rayIntersectsTriangle(Ray* ray, float3* va, float3* vb, float3* vc, float* res_dist, float* ru, float* rv)
 {
 	float3 edge1, edge2, h;
 	float a;
-	edge1 = vb - va;
-	edge2 = vc - va;
+	edge1 = *vb - *va;
+	edge2 = *vc - *va;
 
-	h = cross(ray.direction, edge2);
+	h = cross(ray->direction, edge2);
 	a = dot(edge1, h);
 
 	if (a > -EPSILON && a < EPSILON)
 		return false;
 
 	float f = __fdividef(1.0, a);
-	float3 s = ray.originPoint - va;
+	float3 s = ray->originPoint - *va;
 	float u = f * (dot(s, h));
 	if (u < 0.0 || u > 1.0)
 		return false;
 
 	float3 q = cross(s, edge1);
-	float v = f * (dot(ray.direction, q));
+	float v = f * (dot(ray->direction, q));
 	if (v < 0.0 || u + v > 1.0)
 		return false;
 
@@ -52,9 +52,9 @@ bool rayIntersectsTriangle(Ray& ray, float3& va, float3& vb, float3& vc, float& 
 	float t = f * dot(edge2, q);
 	if (t > EPSILON) // ray intersection
 	{
-		res_dist = t;
-		ru = u;
-		rv = v;
+		*res_dist = t;
+		*ru = u;
+		*rv = v;
 		return true;
 	}
 	// This means that there is a line intersection but not a ray intersection.
@@ -62,13 +62,13 @@ bool rayIntersectsTriangle(Ray& ray, float3& va, float3& vb, float3& vc, float& 
 }
 
 __device__
-bool testSphereIntersection(Ray& ray, const WorldObject* obj, float3& hit_point, float3& hit_norm) {
+bool testSphereIntersection(Ray* ray, const WorldObject* obj, float3* hit_point, float3* hit_norm) {
 	SphereGeometryData* gdata = (SphereGeometryData*)obj->geometry_data;
 	float rad = gdata->radius;
 
-	float3 op = gdata->position - ray.originPoint;
+	float3 op = gdata->position - ray->originPoint;
 	float t, epsilon = 0.0001f;
-	float b = dot(op, ray.direction);
+	float b = dot(op, ray->direction);
 	float disc = b*b - dot(op, op) + rad*rad; // discriminant
 
 	if (disc < 0)
@@ -82,14 +82,14 @@ bool testSphereIntersection(Ray& ray, const WorldObject* obj, float3& hit_point,
 		return false;
 
 	/* calculate hit point and normal to surface */
-	hit_point = ray.originPoint + ray.direction * t;
-	hit_norm = normalize(hit_point - gdata->position);
+	*hit_point = ray->originPoint + ray->direction * t;
+	*hit_norm = normalize(*hit_point - gdata->position);
 
 	return true;
 }
 
 /*__device__
-bool testTriangleMeshIntersection(Ray& ray, WorldObject& obj, TriangleMesh& imesh, float3& hit_point, float3& hit_norm) {
+bool testTriangleMeshIntersection(Ray* ray, WorldObject* obj, TriangleMesh* imesh, float3* hit_point, float3* hit_norm) {
 	MeshGeometryData* gdata = (MeshGeometryData*)obj.geometry_data;
 
 	int inters_mesh_idx;
@@ -99,7 +99,7 @@ bool testTriangleMeshIntersection(Ray& ray, WorldObject& obj, TriangleMesh& imes
 
 	for (int t = 0; t < gdata->num_triangles; ++t) {
 		Triangle& trg = gdata->triangles[t];
-		if (culling && dot(ray.direction, trg.norm_a) > 0) // skip triangles turned back to ray
+		if (culling && dot(ray->direction, trg.norm_a) > 0) // skip triangles turned back to ray
 			continue;
 
 		float inters_dist;
@@ -119,20 +119,20 @@ bool testTriangleMeshIntersection(Ray& ray, WorldObject& obj, TriangleMesh& imes
 		}
 	}
 	if (intersects) {
-		hit_point = ray.originPoint + closest_dist * ray.direction;
+		hit_point = ray->originPoint + closest_dist * ray->direction;
 	}
 	return intersects;
 }*/
 
 /* based on: https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection */
 __device__
-bool testBBoxIntersection(BBox& bbox, Ray& ray, float& tmin) {
+bool testBBoxIntersection(BBox& bbox, Ray* ray, float* tmin) {
 	float t[8];
 
-	t[1] = (bbox.bounds[ray.sign[0]].x - ray.originPoint.x) * ray.inv_direction.x;
-	t[2] = (bbox.bounds[1 - ray.sign[0]].x - ray.originPoint.x) * ray.inv_direction.x;
-	t[3] = (bbox.bounds[ray.sign[1]].y - ray.originPoint.y) * ray.inv_direction.y;
-	t[4] = (bbox.bounds[1 - ray.sign[1]].y - ray.originPoint.y) * ray.inv_direction.y;
+	t[1] = (bbox.bounds[ray->sign[0]].x - ray->originPoint.x) * ray->inv_direction.x;
+	t[2] = (bbox.bounds[1 - ray->sign[0]].x - ray->originPoint.x) * ray->inv_direction.x;
+	t[3] = (bbox.bounds[ray->sign[1]].y - ray->originPoint.y) * ray->inv_direction.y;
+	t[4] = (bbox.bounds[1 - ray->sign[1]].y - ray->originPoint.y) * ray->inv_direction.y;
 
 	if ((t[1] > t[4]) || (t[3] > t[2]))
 		return false;
@@ -141,8 +141,8 @@ bool testBBoxIntersection(BBox& bbox, Ray& ray, float& tmin) {
 	if (t[4] < t[2])
 		t[2] = t[4];
 
-	t[5] = (bbox.bounds[ray.sign[2]].z - ray.originPoint.z) * ray.inv_direction.z;
-	t[6] = (bbox.bounds[1 - ray.sign[2]].z - ray.originPoint.z) * ray.inv_direction.z;
+	t[5] = (bbox.bounds[ray->sign[2]].z - ray->originPoint.z) * ray->inv_direction.z;
+	t[6] = (bbox.bounds[1 - ray->sign[2]].z - ray->originPoint.z) * ray->inv_direction.z;
 
 	if ((t[1] > t[6]) || (t[5] > t[2]))
 		return false;
@@ -151,27 +151,27 @@ bool testBBoxIntersection(BBox& bbox, Ray& ray, float& tmin) {
 	if (t[6] < t[2])
 		t[2] = t[6];
 
-	tmin = t[1] < 0 ? 0.0f : t[1];
+	*tmin = t[1] < 0 ? 0.0f : t[1];
 	return true;
 }
 
 
 // Iteration loop version instead of recursive ray KDNode intersection
 __device__
-bool rayIntersectsKDNodeLOOP(Ray& ray,
+bool rayIntersectsKDNodeLOOP(Ray* ray,
 							Triangle* trs,
 							KDNode* flat_nodes,
-							float3& bary_coords,
-							Triangle& itrg,
-							float& tmin,
-							float3& debug_mask) {
+							float3* bary_coords,
+							Triangle* itrg,
+							float* tmin,
+							float3* debug_mask) {
 
 	int curr_idx = 0;
 	bool intersects = false;
 
 	// check root node intersection
 	float dist = HUGE_VALF;
-	if (!testBBoxIntersection(flat_nodes[curr_idx].bbox, ray, dist))
+	if (!testBBoxIntersection(flat_nodes[curr_idx].bbox, ray, &dist))
 		return intersects;
 
 	// init short stack
@@ -189,14 +189,14 @@ bool rayIntersectsKDNodeLOOP(Ray& ray,
 			for (int i = 0; i < node.num_trgs; i++)
 			{
 				Triangle& trg = trs[node.trg_idxs[i]];
-				//if (dot(ray.direction, trg.norm_a) >= 0) continue;
-				if (rayIntersectsTriangle(ray, trg.a, trg.b, trg.c, t, u, v)) {
+				//if (dot(ray->direction, trg.norm_a) >= 0) continue;
+				if (rayIntersectsTriangle(ray, &(trg.a), &(trg.b), &(trg.c), &t, &u, &v)) {
 					intersects = true;
-					if (t < tmin) {
-						tmin = t;
-						itrg = trg;
-						bary_coords.y = u;
-						bary_coords.z = v;
+					if (t < *tmin) {
+						*tmin = t;
+						*itrg = trg;
+						bary_coords->y = u;
+						bary_coords->z = v;
 					}
 				}
 			}
@@ -214,9 +214,9 @@ bool rayIntersectsKDNodeLOOP(Ray& ray,
 
 		// test left and right node for intersection
 		if (node.left_idx != -1)
-			left_res = testBBoxIntersection(flat_nodes[node.left_idx].bbox, ray, left_dist) && (left_dist < tmin);
+			left_res = testBBoxIntersection(flat_nodes[node.left_idx].bbox, ray, &left_dist) && (left_dist < *tmin);
 		if (node.right_idx != -1)
-			right_res = testBBoxIntersection(flat_nodes[node.right_idx].bbox, ray, right_dist) && (right_dist < tmin);
+			right_res = testBBoxIntersection(flat_nodes[node.right_idx].bbox, ray, &right_dist) && (right_dist < *tmin);
 
 		if (left_res && right_res) {
 			// choose closer node to traverse, and push further node on stack for later visiting
@@ -249,11 +249,11 @@ bool rayIntersectsKDNodeLOOP(Ray& ray,
 }
 
 __device__
-bool rayIntersectsKDNode(Ray& ray, Triangle* trs, int trg_tex, KDNode* node, float3& norm, int& mat_idx, float& tmin, float3& debug_mask) {
+bool rayIntersectsKDNode(Ray* ray, Triangle* trs, int trg_tex, KDNode* node, float3* norm, int* mat_idx, float* tmin, float3* debug_mask) {
 	if (node == NULL)
 		return false;
 	float t;
-	if (!testBBoxIntersection(node->bbox, ray, t))
+	if (!testBBoxIntersection(node->bbox, ray, &t))
 		return false;
 #ifdef DEBUG_BBOXES
 	debug_mask *= 0.95f;
@@ -289,13 +289,13 @@ bool rayIntersectsKDNode(Ray& ray, Triangle* trs, int trg_tex, KDNode* node, flo
 			}
 #else
 			Triangle& trg = trs[node->trg_idxs[i]];
-			//if (dot(ray.direction, trg.norm_a) >= 0) continue;
-			if (rayIntersectsTriangle(ray, trg.a, trg.b, trg.c, t, u, v)) {
+			//if (dot(ray->direction, trg.norm_a) >= 0) continue;
+			if (rayIntersectsTriangle(ray, &(trg.a), &(trg.b), &(trg.c), &t, &u, &v)) {
 				intersects = true;
-				if (t < tmin) {
-					tmin = t;
-					norm = trg.norm_a;
-					mat_idx = trg.material_idx;
+				if (t < *tmin) {
+					*tmin = t;
+					*norm = trg.norm_a;
+					*mat_idx = trg.material_idx;
 				}
 			}
 #endif
@@ -311,14 +311,14 @@ bool rayIntersectsKDNode(Ray& ray, Triangle* trs, int trg_tex, KDNode* node, flo
 }
 
 __device__
-bool rayIntersectsObject(Ray& ray,
+bool rayIntersectsObject(Ray* ray,
 						const WorldObject* obj,
 						const Material*& mat,
-						Triangle& trg,
-						float3& hit_point,
-						float3& hit_norm,
-						float3& bary_coords,
-						float3& debug_mask) {
+						Triangle* trg,
+						float3* hit_point,
+						float3* hit_norm,
+						float3* bary_coords,
+						float3* debug_mask) {
 
 	bool intersects = false;
 
@@ -332,7 +332,7 @@ bool rayIntersectsObject(Ray& ray,
 		float tmin = HUGE_VALF;
 #ifdef USE_KD_TREES
 	#ifdef USE_SHORT_STACK_LOOP
-		intersects = rayIntersectsKDNodeLOOP(ray, gdata->triangles, gdata->flat_kd_root, bary_coords, trg, tmin, debug_mask);
+		intersects = rayIntersectsKDNodeLOOP(ray, gdata->triangles, gdata->flat_kd_root, bary_coords, trg, &tmin, debug_mask);
 	#else
 		intersects = rayIntersectsKDNode(ray, gdata->triangles, gdata->triangles_tex, gdata->kdroot, hit_norm, res_mat_idx, tmin, debug_mask);
 	#endif
@@ -351,22 +351,22 @@ bool rayIntersectsObject(Ray& ray,
 				//printf("[%f,%f,%f,%f]\n", a.x, a.y, a.z, a.w);
 			Triangle& trg = gdata->triangles[i];
 	#endif
-				//if (dot(ray.direction, trg.norm_a) >= 0) continue;
+				//if (dot(ray->direction, trg.norm_a) >= 0) continue;
 	#ifdef USE_TRIANGLE_TEXTURE_MEM
 			if (rayIntersectsTriangle(ray, make_float3(a.x, a.y, a.z),
 				make_float3(b.x, b.y, b.z),
 				make_float3(c.x, c.y, c.z), t, u, v)) {
 				intersects = true;
-				if (t < tmin) {
-					tmin = t;
+				if (t < *tmin) {
+					*tmin = t;
 					n_idx = trg_i;
 				}
 			}
 	#else
-			if (rayIntersectsTriangle(ray, trg.a, trg.b, trg.c, t, u, v)) {
+			if (rayIntersectsTriangle(ray, &(trg.a), &(trg.b), &(trg.c), &t, &u, &v)) {
 				intersects = true;
-				if (t < tmin) {
-					tmin = t;
+				if (t < *tmin) {
+					*tmin = t;
 					n_idx = i;
 				}
 			}
@@ -376,17 +376,17 @@ bool rayIntersectsObject(Ray& ray,
 #endif
 		if (intersects)
 		{
-			hit_point = ray.originPoint + tmin * ray.direction;
-			bary_coords.x = 1.0f - bary_coords.y - bary_coords.z;
-			hit_norm = normalize(bary_coords.x * trg.norm_a + bary_coords.y * trg.norm_b + bary_coords.z * trg.norm_c);
-			mat = &(obj->materials[trg.material_idx]);
+			*hit_point = ray->originPoint + tmin * ray->direction;
+			bary_coords->x = 1.0f - bary_coords->y - bary_coords->z;
+			*hit_norm = normalize(bary_coords->x * trg->norm_a + bary_coords->y * trg->norm_b + bary_coords->z * trg->norm_c);
+			mat = &(obj->materials[trg->material_idx]);
 
 #ifndef USE_KD_TREES
 	#ifdef USE_TRIANGLE_TEXTURE_MEM
 			float4 n = tex1Dfetch<float4>(gdata->triangles_tex, n_idx + 3);
-			hit_norm = make_float3(n.x, n.y, n.z);
+			*hit_norm = make_float3(n.x, n.y, n.z);
 	#else
-			hit_norm = gdata->triangles[n_idx].norm_a;
+			*hit_norm = gdata->triangles[n_idx].norm_a;
 			
 	#endif
 #endif
@@ -396,7 +396,7 @@ bool rayIntersectsObject(Ray& ray,
 }
 
 __device__
-bool rayIntersectsScene(Ray& ray, Scene& scene, IntersectInfo& ii) {
+bool rayIntersectsScene(Ray* ray, Scene& scene, IntersectInfo& ii) {
 	bool intersects = false;
 	float closest_dist = HUGE_VALF;
 	float3 inters_point, inters_norm, bary_coords, debug_mask;
@@ -406,9 +406,9 @@ bool rayIntersectsScene(Ray& ray, Scene& scene, IntersectInfo& ii) {
 		const Material* i_mat = &(obj->materials[0]);
 		Triangle itrg;
 
-		if (rayIntersectsObject(ray, obj, i_mat, itrg, inters_point, inters_norm, bary_coords, debug_mask)) {
+		if (rayIntersectsObject(ray, obj, i_mat, &itrg, &inters_point, &inters_norm, &bary_coords, &debug_mask)) {
 			intersects = true;
-			float inters_dist = length(inters_point - ray.originPoint);
+			float inters_dist = length(inters_point - ray->originPoint);
 			if (inters_dist < closest_dist) {
 				closest_dist = inters_dist;
 				ii.iobj_index = i;
