@@ -12,8 +12,8 @@
 //DIFFUSE SURFACE // cosine weighed Lambertian model
 __device__
 inline void Diffuse_BRDF(	Ray* in_ray,
-							 float3& surf_normal,
-							 float3& inters_point,
+							const float3& surf_normal,
+							const float3& inters_point,
 							curandState* curand_s) {
 
 	float r1 = PI_X2_f * curand_uniform(curand_s);
@@ -34,8 +34,8 @@ inline void Diffuse_BRDF(	Ray* in_ray,
 __device__
 inline void ReflectiveDiffuse_BRDF(	Ray* in_ray,
 									float refl_factor,
-									 float3& surf_normal,
-									 float3& inters_point,
+									const float3& surf_normal,
+									const float3& inters_point,
 									curandState* curand_s) {
 
 	float3 new_orig = inters_point + surf_normal * 0.0001f;
@@ -68,8 +68,8 @@ inline void Refractive_BRDF(Ray* in_ray,
 							float refract_index,
 							float refl_factor,
 							float3& mask,
-							 float3& surf_normal,
-							 float3& inters_point,
+							const float3& surf_normal,
+							const float3& inters_point,
 							curandState* curand_s) {
 
 	// check if ray is inside refrected object

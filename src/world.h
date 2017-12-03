@@ -44,8 +44,8 @@ typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 
 
 typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
-	float3 a,b,c; // triangle vertices
-	float3 norm_a, norm_b, norm_c; // normals in triangle vertices
+	float3 a,b,c,e1,e2; // triangle vertices A B C and edges E1 = a - b,  E2 = c - b
+	float3 norm_a, norm_b, norm_c; // normals of triangle vertices
 	float2 tx_a, tx_b, tx_c; // texture coords of triangle vertices
 	int material_idx; // material index of the triangle
 } Triangle;

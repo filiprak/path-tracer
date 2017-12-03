@@ -340,9 +340,14 @@ Triangle* loadTriangles(const aiScene* aiscene,
 			glm::vec4 gb = transform * glm::vec4(vb.x, vb.y, vb.z, 1.0f);
 			glm::vec4 gc = transform * glm::vec4(vc.x, vc.y, vc.z, 1.0f);
 
-			tr_host_ptr[i].a = make_float3(ga.x, ga.y, ga.z);
-			tr_host_ptr[i].b = make_float3(gb.x, gb.y, gb.z);
-			tr_host_ptr[i].c = make_float3(gc.x, gc.y, gc.z);
+			float3 a = make_float3(ga.x, ga.y, ga.z);
+			float3 b = make_float3(gb.x, gb.y, gb.z);
+			float3 c = make_float3(gc.x, gc.y, gc.z);
+			tr_host_ptr[i].a = a;
+			tr_host_ptr[i].b = b;
+			tr_host_ptr[i].c = c;
+			tr_host_ptr[i].e1 = b - a;
+			tr_host_ptr[i].e2 = c - a;
 			tr_host_ptr[i].material_idx = mesh->mMaterialIndex;
 
 			int trg_tex_idx = 6 * i;

@@ -24,16 +24,14 @@ typedef struct {
 
 /* Möller–Trumbore ray-triangle intersection algorithm */
 __device__
-bool rayIntersectsTriangle(Ray* ray, float3* va, float3* vb, float3* vc, float* res_dist, float* ru, float* rv)
+bool rayIntersectsTriangle(Ray* ray, float3* va, float3* e1, float3* e2, float* res_dist, float* ru, float* rv)
 {
-	float3 edge1, edge2, h;
+	float3 h;
 	float a;
-	edge1 = *vb - *va;
-	edge2 = *vc - *va;
 
-	h = cross(ray->direction, edge2);
-	a = dot(edge1, h);
-
+	h = cross(ray->direction, *e2);
+	a = dot(*e1, h);
+	
 	if (a > -EPSILON && a < EPSILON)
 		return false;
 
@@ -43,13 +41,13 @@ bool rayIntersectsTriangle(Ray* ray, float3* va, float3* vb, float3* vc, float* 
 	if (u < 0.0 || u > 1.0)
 		return false;
 
-	float3 q = cross(s, edge1);
+	float3 q = cross(s, *e1);
 	float v = f * (dot(ray->direction, q));
 	if (v < 0.0 || u + v > 1.0)
 		return false;
 
 	// At this stage we can compute t to find out where the intersection point is on the line.
-	float t = f * dot(edge2, q);
+	float t = f * dot(*e2, q);
 	if (t > EPSILON) // ray intersection
 	{
 		*res_dist = t;
@@ -151,7 +149,7 @@ bool testBBoxIntersection(BBox& bbox, Ray* ray, float* tmin) {
 	if (t[6] < t[2])
 		t[2] = t[6];
 
-	*tmin = t[1] < 0 ? 0.0f : t[1];
+	*tmin = t[1] < 0.0f ? 0.0f : t[1];
 	return true;
 }
 
@@ -190,7 +188,7 @@ bool rayIntersectsKDNodeLOOP(Ray* ray,
 			{
 				Triangle& trg = trs[node.trg_idxs[i]];
 				//if (dot(ray->direction, trg.norm_a) >= 0) continue;
-				if (rayIntersectsTriangle(ray, &(trg.a), &(trg.b), &(trg.c), &t, &u, &v)) {
+				if (rayIntersectsTriangle(ray, &(trg.a), &(trg.e1), &(trg.e2), &t, &u, &v)) {
 					intersects = true;
 					if (t < *tmin) {
 						*tmin = t;
@@ -290,7 +288,7 @@ bool rayIntersectsKDNode(Ray* ray, Triangle* trs, int trg_tex, KDNode* node, flo
 #else
 			Triangle& trg = trs[node->trg_idxs[i]];
 			//if (dot(ray->direction, trg.norm_a) >= 0) continue;
-			if (rayIntersectsTriangle(ray, &(trg.a), &(trg.b), &(trg.c), &t, &u, &v)) {
+			if (rayIntersectsTriangle(ray, &(trg.a), &(trg.e1), &(trg.e2), &t, &u, &v)) {
 				intersects = true;
 				if (t < *tmin) {
 					*tmin = t;
