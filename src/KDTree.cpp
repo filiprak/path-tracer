@@ -1,4 +1,3 @@
-#include "KDTree.h"
 #include "cutil_math.h"
 #include "utility.h"
 #include "cudaUtility.h"

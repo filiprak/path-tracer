@@ -1,7 +1,6 @@
 #include "kernel.h"
 
 #include "pathtracing.cuh"
-#include "view.h"
 #include "world.h"
 #include "camera.h"
 #include "device_launch_parameters.h"

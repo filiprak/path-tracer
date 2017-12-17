@@ -2,7 +2,6 @@
 
 #include "main.h"
 #include "camera.h"
-#include "KDTree.h"
 #include "cuda_runtime.h"
 #include <glm/glm.hpp>
 
@@ -17,9 +16,9 @@ typedef enum {
 /* Material types */
 typedef enum {
 	Luminescent = 0,
-	Reflective,
-	Refractive,
-	Diffusing
+	Diffuse,
+	Specular,
+	Transparent,
 
 } MaterialType;
 
@@ -39,6 +38,7 @@ typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 
 	// refractive materials
 	float refract_index; // mtl: Ni
+	float sharpness; // mtl: Ns
 
 } Material;
 

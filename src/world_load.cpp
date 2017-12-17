@@ -1,4 +1,3 @@
-#include "KDTree.h"
 #include "world_load.h"
 #include "world.h"
 #include "main.h"
@@ -214,7 +213,8 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 		 * Ni = refract_index
 		 */
 		aiColor3D Ka, Kd, Ke;
-		float d, Ni;
+		int shadingModel;
+		float d, Ni, Ns;
 		aiString texture_path;
 
 		printf("  Loading material[%d]: name: %s, type: %s\n", i, name.C_Str(), mat_type.c_str());
@@ -223,7 +223,14 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 		material->Get(AI_MATKEY_COLOR_DIFFUSE, Kd);
 		material->Get(AI_MATKEY_COLOR_EMISSIVE, Ke);
 		material->Get(AI_MATKEY_REFRACTI, Ni);
+		material->Get(AI_MATKEY_SHADING_MODEL, shadingModel);
+		material->Get(AI_MATKEY_SHININESS, Ns);
 		material->Get(AI_MATKEY_OPACITY, d);
+		// assimp error fix with Ns value
+		Ns /= 4.0f;
+		printf("   illum:      %d\n", shadingModel);
+		printf("       d:      %f\n", d);
+		printf("      Ns:      %f\n", Ns);
 		
 		mat_ptr[i].cuda_texture_obj = -1;
 		int num_tex_ambient = material->GetTextureCount(aiTextureType_AMBIENT);
@@ -254,20 +261,28 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 		mat_ptr[i].refract_index = Ni;
 		
 		// switch material type
-		if (!mat_type.compare("diffuse")) {
-			mat_ptr[i].type = Diffusing;
+		if (shadingModel == aiShadingMode_Flat || shadingModel == 0) {
+			mat_ptr[i].type = Diffuse;
 		}
-		else if (!mat_type.compare("reflective")) {
-			mat_ptr[i].type = Reflective;
+		else if (	shadingModel == aiShadingMode_Gouraud ||
+					shadingModel == aiShadingMode_Phong ||
+					shadingModel == aiShadingMode_Toon ||
+					shadingModel == aiShadingMode_CookTorrance) {
+			mat_ptr[i].type = Specular;
+			mat_ptr[i].reflect_factor = 0.66f;
 		}
-		else if (!mat_type.compare("refractive")) {
-			mat_ptr[i].type = Refractive;
+		else if (	shadingModel == aiShadingMode_Blinn ||
+					shadingModel == aiShadingMode_OrenNayar ||
+					shadingModel == aiShadingMode_Minnaert ||
+					shadingModel == aiShadingMode_Fresnel) {
+			mat_ptr[i].type = Transparent;
 		}
-		else if (!mat_type.compare("luminescent")) {
+		else if (shadingModel == aiShadingMode_NoShading) {
 			mat_ptr[i].type = Luminescent;
 		}
 		else {
-			mat_ptr[i].type = Diffusing;
+			// default material
+			mat_ptr[i].type = Diffuse;
 			mat_ptr[i].norm_color = make_float3(0.75f);
 			mat_ptr[i].color = 255.0f * mat_ptr[i].norm_color;
 		}

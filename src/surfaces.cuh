@@ -8,6 +8,16 @@
 #include "constants.h"
 #include "config.h"
 
+// Helper function to calculate random ray direction inside specified cone
+__device__
+inline void rand_cone_Dir(	float3* result,
+							const float3& ray_dir,
+							const float3& surf_normal,
+							float cone_sharpness,
+							curandState* curand_s) {
+	//todo
+}
+
 
 //DIFFUSE SURFACE // cosine weighed Lambertian model
 __device__
@@ -32,8 +42,9 @@ inline void Diffuse_BRDF(	Ray* in_ray,
 
 // DIFFUSE-REFLECTIVE SURFACE // perfect reflective + cosine weighed Lambertian model
 __device__
-inline void ReflectiveDiffuse_BRDF(	Ray* in_ray,
+inline void Specular_Diffuse_BRDF(	Ray* in_ray,
 									float refl_factor,
+									float sharpness,
 									const float3& surf_normal,
 									const float3& inters_point,
 									curandState* curand_s) {
@@ -54,7 +65,7 @@ inline void ReflectiveDiffuse_BRDF(	Ray* in_ray,
 		init_ray(in_ray, new_orig, normalize(u * cosr1 * r2s + v * sinr1*r2s + surf_normal * __fsqrt_rn(1 - r2)));
 	}
 	else {
-		// perfect reflection
+		// glossy reflection with sharpness
 		init_ray(in_ray, new_orig, normalize(reflect(in_ray->direction, surf_normal)));
 	}
 	

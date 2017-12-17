@@ -1,6 +1,5 @@
 #include "camera.h"
 #include "world.h"
-#include "view.h"
 #include "config.h"
 
 #include "cutil_math.h"

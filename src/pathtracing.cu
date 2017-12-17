@@ -1,7 +1,6 @@
 #include "pathtracing.cuh"
 #include "kernel.h"
 #include "stdio.h"
-#include "view.h"
 #include "radiance.cuh"
 #include "cudaUtility.h"
 #include "world_load.h"

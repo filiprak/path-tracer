@@ -18,6 +18,7 @@ typedef void* dv_ptr;
 
 void printSep();
 void printProgramConfig();
+bool parseJsonScene(std::string, Json::Value&, std::string&);
 
 // scene file name
 extern std::string input_file;

@@ -1,5 +1,4 @@
 #include "main.h"
-#include "view.h"
 #include "world.h"
 #include "errors.h"
 #include "cudaUtility.h"
@@ -7,6 +6,8 @@
 #include "config.h"
 #include "json/json.h"
 #include <fstream>
+
+#include "qt5gui.h"
 
 std::string input_file;
 
@@ -38,9 +39,9 @@ void printProgramConfig() {
 }
 
 
-bool parseJsonScene(Json::Value& root, std::string& errmsg) {
+bool parseJsonScene(std::string fpath, Json::Value& root, std::string& errmsg) {
 	Json::Reader reader;
-	std::ifstream jstream(input_file, std::ifstream::binary);
+	std::ifstream jstream(fpath, std::ifstream::binary);
 	if (!jstream.is_open()) {
 		errmsg = "Unable to open file: " + input_file;
 		return false;
@@ -55,30 +56,6 @@ bool parseJsonScene(Json::Value& root, std::string& errmsg) {
 
 
 int main(int argc, char* argv[]) {
-	printf("Starting path-tracer application.\n");
-	if (argc > 1)
-		input_file = std::string(argv[1]);
-	else {
-		printf("Usage: command <scene_file.json>.");
-		getchar();
-		exit(EXIT_FAILURE);
-	}
-
-	// parse scene file
-	Json::Value jscene;
-	std::string errmsg;
-	if (!parseJsonScene(jscene, errmsg)) {
-		printf("Error in scene JSON: %s\n", errmsg.c_str());
-		getchar();
-		exit(EXIT_FAILURE);
-	}
-	
-	int dvNum = printCudaDevicesInfo();
-	if (dvNum < 1) {
-		printf("CUDA devices not found.\nPlease ensure you have it installed.");
-		getchar();
-		exit(EXIT_FAILURE);
-	}
 
 	// Choose which GPU to run on, change this on a multi-GPU system.
 	int cuda_device_id = 0;
@@ -94,28 +71,15 @@ int main(int argc, char* argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	try {
-		printf("Initializing world elements...\n");
-		worldInit(jscene);
-
-		printf("Initializing preview window...\n");
-		viewInit(jscene["camera"]);
-	}
-	catch (const Json::Exception& je) {
-		printf("Error while parsing scene file: %s\n", je.what());
-		getchar();
-		exit(EXIT_FAILURE);
-	}
-	catch (const scene_file_error& err) {
-		printf("Error while loading scene: %s\n", err.what());
+	int dvNum = printCudaDevicesInfo();
+	if (dvNum < 1) {
+		printf("CUDA devices not found.\nPlease ensure you have it installed.");
 		getchar();
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Starting preview loop...\n");
-	viewLoop();
-	printf("Exiting program...\n");
-	exit(EXIT_SUCCESS);
+	// run Qt
+	return runQt5(argc, argv);
 }
 
 void printSep() {

@@ -75,12 +75,12 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 		// shading pixels in normal mode-------------------------------------------------
 		switch (mat->type) {
 			// material cases
-			case Diffusing: {
+			case Diffuse:
 				Diffuse_BRDF(&ray, ii.normal, ii.ipoint, curand_s); break;
-			}
-			case Reflective: ReflectiveDiffuse_BRDF(&ray, mat->reflect_factor, ii.normal, ii.ipoint, curand_s); break;
-			case Refractive: Refractive_BRDF(&ray, mat->refract_index,
-				mat->reflect_factor, mask, ii.normal, ii.ipoint, curand_s); break;
+			case Specular:
+				Specular_Diffuse_BRDF(&ray, mat->reflect_factor, mat->sharpness, ii.normal, ii.ipoint, curand_s); break;
+			case Transparent:
+				Refractive_BRDF(&ray, mat->refract_index, mat->reflect_factor, mask, ii.normal, ii.ipoint, curand_s); break;
 		}
 		
 		// if material has texture then blend it with material color
