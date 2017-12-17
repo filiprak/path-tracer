@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.1)
 
 project(path-tracer)
 
@@ -6,19 +6,37 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 # Set up include and lib paths
 set(EXTERNAL "external")
+set(QT_SRC "qt")
 include_directories("${EXTERNAL}")
 include_directories("${EXTERNAL}/include/")
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(EXTERNAL_LIB_PATH "${EXTERNAL}/lib/linux" "/usr/lib64")
-elseif(WIN32)
+elseif(WIN32 OR WIN64)
     set(EXTERNAL_LIB_PATH "${EXTERNAL}/lib/win")
 endif()
 link_directories(${EXTERNAL_LIB_PATH})
 list(APPEND CMAKE_LIBRARY_PATH "${EXTERNAL_LIB_PATH}")
 
 
-# Find up and set up core dependency libs
+# Fing required packages
+
+# QT5
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_PREFIX_PATH "C:\\Qt\\5.9.3\\msvc2015\\")
+include_directories("${QT_SRC}/include/")
+
+find_package(Qt5Core REQUIRED)
+find_package(Qt5Widgets REQUIRED)
+find_package(Qt5Gui REQUIRED)
+
+if (Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Gui_FOUND)
+	message("-- Found ${Qt5Core_LIBRARIES}")
+	message("-- Found ${Qt5Gui_LIBRARIES}")
+	message("-- Found ${Qt5Widgets_LIBRARIES}")
+else(Qt5Core_FOUND AND Qt5Widgets_FOUND)
+	message("-- Qt5 required packages not found !")
+endif()
 
 # GLFW
 set(GLFW_INCLUDE_DIR "${EXTERNAL}/include")
@@ -41,12 +59,15 @@ find_package(OpenGL REQUIRED)
 
 
 set(CORELIBS
+	"${Qt5Core_LIBRARIES}"
+	"${Qt5Widgets_LIBRARIES}"
+	"${Qt5Gui_LIBRARIES}"
     "${GLFW_LIBRARY}"
     "${OPENGL_LIBRARY}"
     "${GLEW_LIBRARY}"
 	"${ASSIMP_LIBRARY}"
     )
-
+	
 # Enable C++11 for host code
 set(CMAKE_CXX_STANDARD 11)
 
@@ -70,8 +91,13 @@ set(CUDA_SEPARABLE_COMPILATION ON)
 
 
 set(SRC_PATH "src")
+include_directories("${SRC_PATH}")
+
 # set up source files
 file(GLOB_RECURSE SOURCES
+	"${QT_SRC}/*.h"
+	"${QT_SRC}/*.hpp"
+    "${QT_SRC}/*.cpp"
     "${SRC_PATH}/*.h"
 	"${SRC_PATH}/*.hpp"
     "${SRC_PATH}/*.cpp"
