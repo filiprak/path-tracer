@@ -11,6 +11,9 @@
 #include <stdio.h>
 #include <cstdlib>
 
+// cuda pbo image resource
+cudaGraphicsResource* viewPBO_cuda;
+
 float4* device_accum_image = NULL;
 
 __host__
@@ -89,3 +92,4 @@ cudaError_t kernelMain(uchar4* pbo, int iter)
 
     return cudaGetLastError();
 }
+

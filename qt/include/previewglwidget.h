@@ -11,6 +11,7 @@
 
 class PreviewGLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
+	Q_OBJECT
 public:
     PreviewGLWidget(QWidget* parent);
     ~PreviewGLWidget();
@@ -33,10 +34,17 @@ private:
     QOpenGLTexture *m_texture;
 
 	void initShader();
-	void initPBO();
+	void initPBO(int w, int h);
 	void deletePBO();
 	void initVAO();
 	void imageTextureInit();
+	void runCUDApbotest();
+
+	void initNativeGL();
+	void cleanupNativeGL();
+
+private slots:
+	void aboutToResize_slot();
 
 };
 
