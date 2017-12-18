@@ -38,17 +38,6 @@ else(Qt5Core_FOUND AND Qt5Widgets_FOUND)
 	message("-- Qt5 required packages not found !")
 endif()
 
-# GLFW
-set(GLFW_INCLUDE_DIR "${EXTERNAL}/include")
-set(GLFW_LIBRARY_DIR "${CMAKE_LIBRARY_PATH}")
-find_library(GLFW_LIBRARY "glfw3" HINTS "${GLFW_LIBRARY_DIR}")
-
-# GLEW
-set(GLEW_INCLUDE_DIR "${EXTERNAL}/include")
-set(GLEW_LIBRARY_DIR "${CMAKE_LIBRARY_PATH}")
-add_definitions(-DGLEW_STATIC)
-find_package(GLEW REQUIRED)
-
 # ASSIMP
 set(ASSIMP_INCLUDE_DIRS "${EXTERNAL}/include")
 set(ASSIMP_LIBRARY_DIRS "${CMAKE_LIBRARY_PATH}")
@@ -62,9 +51,7 @@ set(CORELIBS
 	"${Qt5Core_LIBRARIES}"
 	"${Qt5Widgets_LIBRARIES}"
 	"${Qt5Gui_LIBRARIES}"
-    "${GLFW_LIBRARY}"
     "${OPENGL_LIBRARY}"
-    "${GLEW_LIBRARY}"
 	"${ASSIMP_LIBRARY}"
     )
 	
