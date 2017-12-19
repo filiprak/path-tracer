@@ -41,21 +41,25 @@ typedef struct {
 	// max ray bounces number
 	int max_ray_bounces;
 
+	// methodes
+	void init(const Json::Value&);
+	void reset();
+	void refresh();
+
+	void move(float3);
+
+	void rotateV(float);
+	void rotateH(float);
+
+	void updateMaxRayBnc(int);
+	void updateAajitter(float);
+	void updateGamma(float);
+	void togglePrevMode();
+	void toggleTextures();
+
+	void printInfo();
+
 } Camera;
 
 
-void initCamera(const Json::Value&);
-void resetCamera();
 
-void moveCamera(float3);
-
-void rotateVCamera(float);
-void rotateHCamera(float);
-
-void updateMaxRayBnc(int);
-void updateAajitter(float);
-void updateGamma(float);
-void togglePrevMode();
-void toggleTextures();
-
-void printCamInfo();

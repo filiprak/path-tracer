@@ -4,8 +4,6 @@
 #include "cudaUtility.h"
 #include "kernel.h"
 #include "config.h"
-#include "json/json.h"
-#include <fstream>
 
 #include "qt5gui.h"
 
@@ -39,45 +37,21 @@ void printProgramConfig() {
 }
 
 
-bool parseJsonScene(std::string fpath, Json::Value& root, std::string& errmsg) {
-	Json::Reader reader;
-	std::ifstream jstream(fpath, std::ifstream::binary);
-	if (!jstream.is_open()) {
-		errmsg = "Unable to open file: " + input_file;
-		return false;
-	}
-	bool parsingSuccessful = reader.parse(jstream, root, false);
-	if (!parsingSuccessful)
-		errmsg = reader.getFormattedErrorMessages();
-
-	jstream.close();
-	return parsingSuccessful;
-}
-
-
-int main(int argc, char* argv[]) {
-
+int detectCUDAdevice() {
 	// Choose which GPU to run on, change this on a multi-GPU system.
-	int cuda_device_id = 0;
-	cudaSetDevice(cuda_device_id);
-	if (checkCudaError("Unable to set CUDA device")) {
-		getchar();
-		exit(EXIT_FAILURE);
-	}
-
-	cudaDeviceSetLimit(cudaLimitStackSize, (size_t)MAX_STACK_CUDA_SIZE);
-	if (checkCudaError("Unable to set CUDA device stack size.\n")) {
-		getchar();
-		exit(EXIT_FAILURE);
-	}
-
 	int dvNum = printCudaDevicesInfo();
 	if (dvNum < 1) {
-		printf("CUDA devices not found.\nPlease ensure you have it installed.");
+		
 		getchar();
 		exit(EXIT_FAILURE);
 	}
 
+	int cuda_device_id = 0;
+	cudaSetDevice(cuda_device_id);
+	return dvNum;
+}
+
+int main(int argc, char* argv[]) {
 	// run Qt
 	return runQt5(argc, argv);
 }

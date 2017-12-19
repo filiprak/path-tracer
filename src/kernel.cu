@@ -1,7 +1,6 @@
 #include "kernel.h"
 
 #include "pathtracing.cuh"
-#include "world.h"
 #include "camera.h"
 #include "device_launch_parameters.h"
 #include "cudaUtility.h"
@@ -17,12 +16,12 @@ cudaGraphicsResource* viewPBO_cuda;
 float4* device_accum_image = NULL;
 
 __host__
-void kernelInit()
+void kernelInit(const Scene& scene)
 {
 	cudaMalloc(&device_accum_image, scene.camera.projection.num_pixels * sizeof(float4));
 	cudaMemset(device_accum_image, 0, scene.camera.projection.num_pixels * sizeof(float4));
 
-	initPathTracing();
+	initPathTracing(scene);
 }
 
 __host__
@@ -54,7 +53,7 @@ void writeImageToPBO(uchar4* pbo, float gamma, int width, int height, int iter, 
 
 // Helper function for using CUDA to add vectors in parallel.
 __host__
-cudaError_t kernelMain(uchar4* pbo, int iter)
+cudaError_t kernelMain(uchar4* pbo, Scene& scene, int iter)
 {
 	Camera& cam = scene.camera;
 	// Launch a kernel on the GPU with one thread for each element.
@@ -73,7 +72,7 @@ cudaError_t kernelMain(uchar4* pbo, int iter)
 		int iterHash = wang_hash(utilhash(iter));
 		int jitterHash = wang_hash(iter);
 
-		runPathTracing(iterHash, jitterHash);
+		runPathTracing(scene, iterHash, jitterHash);
 		cudaDeviceSynchronize();
 		checkCudaError("run runPathTracing()");
 	}
@@ -91,5 +90,20 @@ cudaError_t kernelMain(uchar4* pbo, int iter)
 	checkCudaError("kernelMain<<< >>>()");
 
     return cudaGetLastError();
+}
+
+//debug
+void runCUDA(Scene& scene, int iter) {
+	uchar4 *pbo_dptr = NULL;
+	size_t num_bytes;
+
+	// map buffer object
+	cudaGraphicsMapResources(1, &viewPBO_cuda, 0);
+	cudaGraphicsResourceGetMappedPointer((void**)&pbo_dptr, &num_bytes, viewPBO_cuda);
+
+	kernelMain(pbo_dptr, scene, iter);
+
+	// unmap buffer object
+	cudaGraphicsUnmapResources(1, &viewPBO_cuda, 0);
 }
 

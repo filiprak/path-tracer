@@ -11,50 +11,48 @@
 #include "jsonResolve.h"
 
 
-void initCamera(const Json::Value& jcam) {
-	Camera& c = scene.camera;
 
-	c.init_dir = normalize(resolveFloat3(jcam["direction"]));
-	c.init_up = normalize(resolveFloat3(jcam["up"]));
-	c.init_pos = resolveFloat3(jcam["position"]);
-	c.init_right = normalize(cross(c.init_dir, c.init_up));
+void Camera::init(const Json::Value& jcam) {
+	init_dir = normalize(resolveFloat3(jcam["direction"]));
+	init_up = normalize(resolveFloat3(jcam["up"]));
+	init_pos = resolveFloat3(jcam["position"]);
+	init_right = normalize(cross(init_dir, init_up));
 
-	c.position = c.init_pos;
-	c.direction = c.init_dir;
-	c.up = c.init_up;
-	c.right = c.init_right;
+	position = init_pos;
+	direction = init_dir;
+	up = init_up;
+	right = init_right;
 
-	c.h_ang = c.v_ang = 0.0f;
+	h_ang = v_ang = 0.0f;
 
 	int viewWidth = jcam["pixelWidth"].asInt();
 	int viewHeight = jcam["pixelHeight"].asInt();
 
-	c.projection.width = viewWidth;
-	c.projection.height = viewHeight;
-	c.projection.num_pixels = viewWidth * viewHeight;
-	c.projection.screen_dist = resolveFloat(jcam["screenDist"]);
+	projection.width = viewWidth;
+	projection.height = viewHeight;
+	projection.num_pixels = viewWidth * viewHeight;
+	projection.screen_dist = resolveFloat(jcam["screenDist"]);
 
 	float screenHeight = resolveFloat(jcam["screenHeight"]);
-	c.projection.pixel_size = make_float2(screenHeight / (float)viewHeight);
-	c.projection.screen_halfsize.y = screenHeight / 2.0f;
-	c.projection.screen_halfsize.x = c.projection.screen_halfsize.y * (float)viewWidth / (float)viewHeight;
-	c.projection.aa_jitter = 2.0f;
-	c.projection.gamma_corr = 0.5f;
+	projection.pixel_size = make_float2(screenHeight / (float)viewHeight);
+	projection.screen_halfsize.y = screenHeight / 2.0f;
+	projection.screen_halfsize.x = projection.screen_halfsize.y * (float)viewWidth / (float)viewHeight;
+	projection.aa_jitter = 2.0f;
+	projection.gamma_corr = 0.5f;
 
-	c.preview_mode = true;
-	c.texture_enabled = false;
-	c.changed = false;
-	c.max_ray_bounces = MAX_NUM_RAY_BOUNCES;
+	preview_mode = true;
+	texture_enabled = false;
+	changed = false;
+	max_ray_bounces = MAX_NUM_RAY_BOUNCES;
 }
 
-void resetCamera() {
-	Camera& c = scene.camera;
-	c.position = c.init_pos;
-	c.direction = c.init_dir;
-	c.up = c.init_up;
-	c.right = c.init_right;
-	c.h_ang = c.v_ang = 0.0f;
-	c.changed = true;
+void Camera::reset() {
+	position = init_pos;
+	direction = init_dir;
+	up = init_up;
+	right = init_right;
+	h_ang = v_ang = 0.0f;
+	changed = true;
 }
 
 float3 rotate_float3(float3 vec, float radians, float3 normal) {
@@ -70,84 +68,77 @@ float degToRad(float degrees) {
 	return (float)(degrees / 180.0) * PI_f;
 }
 
-void refreshCamera() {
-	Camera& c = scene.camera;
-	c.direction = normalize(rotate_float3(c.init_dir, degToRad(c.v_ang), c.init_right));
-	c.direction = normalize(rotate_float3(c.direction, degToRad(c.h_ang), c.init_up));
-	c.up = normalize(rotate_float3(c.init_up, degToRad(c.v_ang), c.init_right));
-	c.up = normalize(rotate_float3(c.up, degToRad(c.h_ang), c.init_up));
-	c.right = normalize(rotate_float3(c.init_right, degToRad(c.v_ang), c.init_right));
-	c.right = normalize(rotate_float3(c.right, degToRad(c.h_ang), c.init_up));
-	c.changed = true;
+void Camera::refresh() {
+	direction = normalize(rotate_float3(init_dir, degToRad(v_ang), init_right));
+	direction = normalize(rotate_float3(direction, degToRad(h_ang), init_up));
+	up = normalize(rotate_float3(init_up, degToRad(v_ang), init_right));
+	up = normalize(rotate_float3(up, degToRad(h_ang), init_up));
+	right = normalize(rotate_float3(init_right, degToRad(v_ang), init_right));
+	right = normalize(rotate_float3(right, degToRad(h_ang), init_up));
+	changed = true;
 }
 
-void moveCamera(float3 diff) {
-	scene.camera.position += diff;
-	scene.camera.changed = true;
+void Camera::move(float3 diff) {
+	position += diff;
+	changed = true;
 }
 
-void rotateVCamera(float degrees) {
-	Camera& c = scene.camera;
-	c.v_ang += degrees;
-	refreshCamera();
+void Camera::rotateV(float degrees) {
+	v_ang += degrees;
+	refresh();
 }
 
-void rotateHCamera(float degrees) {
-	Camera& c = scene.camera;
-	c.h_ang += degrees;
-	refreshCamera();
+void Camera::rotateH(float degrees) {
+	h_ang += degrees;
+	refresh();
 }
 
-void updateMaxRayBnc(int delta) {
-	Camera& c = scene.camera;
-	int newv = c.max_ray_bounces + delta;
+void Camera::updateMaxRayBnc(int delta) {
+	int newv = max_ray_bounces + delta;
 	if (newv < 0)
 		return;
-	c.max_ray_bounces = newv;
-	c.changed = true;
+	max_ray_bounces = newv;
+	changed = true;
 }
 
-void updateAajitter(float delta) {
-	Camera& c = scene.camera;
-	float aaj = c.projection.aa_jitter + delta;
+void Camera::updateAajitter(float delta) {
+	float aaj = projection.aa_jitter + delta;
 	if (aaj < 0.0)
 		return;
-	c.projection.aa_jitter = aaj;
-	c.changed = true;
+	projection.aa_jitter = aaj;
+	changed = true;
 }
 
-void updateGamma(float delta) {
-	Camera& c = scene.camera;
-	float g = c.projection.gamma_corr + delta;
+void Camera::updateGamma(float delta) {
+	float g = projection.gamma_corr + delta;
 	if (g <= 0.0)
 		return;
-	c.projection.gamma_corr = g;
+	projection.gamma_corr = g;
 }
 
-void togglePrevMode() {
-	scene.camera.preview_mode = !scene.camera.preview_mode;
-	scene.camera.changed = true;
+void Camera::togglePrevMode() {
+	preview_mode = !preview_mode;
+	changed = true;
 }
 
-void toggleTextures() {
-	scene.camera.texture_enabled = !scene.camera.texture_enabled;
-	scene.camera.changed = true;
+void Camera::toggleTextures() {
+	texture_enabled = !texture_enabled;
+	changed = true;
 }
 
-void printCamInfo() {
-	Camera& c = scene.camera;
+void Camera::printInfo() {
 	printf("\nCamera Info -------------------\n");
-	printf("> position:  [%.3f,%.3f,%.3f]\n", c.position.x, c.position.y, c.position.z);
-	printf("> direction: [%.3f,%.3f,%.3f]\n", c.direction.x, c.direction.y, c.direction.z);
-	printf("> up:        [%.3f,%.3f,%.3f]\n", c.up.x, c.up.y, c.up.z);
-	printf("> right:     [%.3f,%.3f,%.3f]\n", c.right.x, c.right.y, c.right.z);
-	printf("> v_ang:            %.3f\n", c.v_ang);
-	printf("> h_ang:            %.3f\n", c.h_ang);
-	printf("> max_ray_bounces:  %d\n", c.max_ray_bounces);
-	printf("> aa ray jitter:    %.3f\n", c.projection.aa_jitter);
-	printf("> image gamma:      %.3f\n", c.projection.gamma_corr);
+	printf("> position:  [%.3f,%.3f,%.3f]\n", position.x, position.y, position.z);
+	printf("> direction: [%.3f,%.3f,%.3f]\n", direction.x, direction.y, direction.z);
+	printf("> up:        [%.3f,%.3f,%.3f]\n", up.x, up.y, up.z);
+	printf("> right:     [%.3f,%.3f,%.3f]\n", right.x, right.y, right.z);
+	printf("> v_ang:            %.3f\n", v_ang);
+	printf("> h_ang:            %.3f\n", h_ang);
+	printf("> max_ray_bounces:  %d\n", max_ray_bounces);
+	printf("> aa ray jitter:    %.3f\n", projection.aa_jitter);
+	printf("> image gamma:      %.3f\n", projection.gamma_corr);
 	/* debug
-	printf("> dot(dir,up):        %f\n", dot(c.direction, c.up));
-	printf("> dot(dir,right):     %f\n", dot(c.direction, c.right));
-	printf("> dot(right,up):      %f\n", dot(c.right, c.up));*/
+	printf("> dot(dir,up):        %f\n", dot(direction, up));
+	printf("> dot(dir,right):     %f\n", dot(direction, right));
+	printf("> dot(right,up):      %f\n", dot(right, up));*/
 }

@@ -12,13 +12,13 @@ __global__
 void traceRays(Camera, WorldObject*, Ray*, float3*);
 
 __host__
-void initPathTracing();
+void initPathTracing(const Scene&);
 
 __host__
 void cleanUpPathTracing();
 
 __host__
-void runPathTracing(int, int);
+void runPathTracing(Scene&, int, int);
 
 __device__
-inline void init_ray(Ray*, float3&, float3&);
+inline void init_ray(Ray*, const float3&, const float3&);

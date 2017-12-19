@@ -70,8 +70,14 @@ void MainWindow::on_actionLoad_Scene_triggered()
     QString sceneFilename = QFileDialog::getOpenFileName(this,
         "Open scene descripion file", "", "Json Files (*.json);;All Files (*)");
     if (!sceneFilename.isEmpty()) {
-        //@todo: load scene file
-
+        // load scene file
+		LoadDialog ldial(this);
+		SceneLoaderThread slthread(sceneFilename, ldial.getLogger());
+		ldial.setWorkerThread(&slthread);
+		ldial.exec();
+		if (!slthread.isFinished())
+			slthread.wait();
+		ldial.accept();
     }
 }
 
@@ -94,13 +100,7 @@ void MainWindow::on_stop_btn_clicked()
 void MainWindow::on_restart_btn_clicked()
 {
     //@todo reastart pathtracing
-    LoadDialog ldial(this);
-    SceneLoaderThread slthread(ldial.getLogger());
-    ldial.setWorkerThread(&slthread);
-    ldial.exec();
-    if (!slthread.isFinished())
-        slthread.wait();
-    ldial.accept();
+   
 }
 
 void MainWindow::on_maxd_spinbox_valueChanged(int arg1)

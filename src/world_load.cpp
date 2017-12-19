@@ -2,6 +2,7 @@
 #include "world.h"
 #include "main.h"
 #include "errors.h"
+#include <fstream>
 #include <vector>
 
 /* stb image */
@@ -18,7 +19,6 @@
 #include "jsonResolve.h"
 
 /* cuda includes */
-#include "cuda_runtime.h"
 #include "cudaUtility.h"
 #include "cutil_math.h"
 
@@ -35,7 +35,7 @@ static std::vector<cudaTextureObject_t> dv_textures;
 static std::vector<dv_ptr> dv_mem_kdtrees_ptrs;
 
 
-void initWorldObjSources(const Json::Value& jscene) {
+void initWorldObjSources(Scene& scene, const Json::Value& jscene) {
 	// init load handlers
 	world_obj_sources.loadFuncMapping[SphereObj] = loadSphereObj;
 	world_obj_sources.loadFuncMapping[TriangleMeshObj] = loadTriangleMeshObj;
@@ -184,7 +184,6 @@ cudaTextureObject_t loadTexture(const std::string src_path)
 	return tex;
 }
 
-__host__
 Material* loadMaterialsToHost(const aiScene* aiscene) {
 	if (!aiscene->HasMaterials())
 		return NULL;
@@ -320,7 +319,6 @@ cudaTextureObject_t loadTrianglesToCudaTexture(float4 *dev_triangles_ptr, unsign
 	return tex;
 }
 
-__host__
 Triangle* loadTriangles(const aiScene* aiscene,
 						glm::mat4 transform,
 						glm::mat4 inv_transform,
@@ -569,7 +567,7 @@ WorldObject* loadWorldObjects() {
 	return dv_wo_ptr;
 }
 
-void loadSceneWorldObjects(const Json::Value& jscene) {
+void loadSceneWorldObjects(Scene& scene, const Json::Value& jscene, DialogLogger* logger) {
 	printSep();
 	printf("Memory struct sizes:\n");
 	printf("Sizeof: %s = %d\n", "WorldObject", sizeof(WorldObject));
@@ -581,12 +579,13 @@ void loadSceneWorldObjects(const Json::Value& jscene) {
 	printf("Sizeof: %s = %d\n", "Material", sizeof(Material));
 	printSep();
 	try {
-		initWorldObjSources(jscene);
+		initWorldObjSources(scene, jscene);
+		scene.camera.init(jscene["camera"]);
 		scene.dv_wobjects_ptr = loadWorldObjects();
 	}
 	catch (const scene_file_error& e) {
 		freeWorldObjects();
-		throw scene_file_error(e.what());
+		logger->error("Scene file error: %s", e.what());
 	}
 }
 
@@ -609,4 +608,19 @@ void freeWorldObjects() {
 	dv_textures.clear();
 	freeWorldObjSources();
 	checkCudaError("freeWorldObjects");
+}
+
+bool parseJsonScene(std::string fpath, Json::Value& root, std::string& errmsg) {
+	Json::Reader reader;
+	std::ifstream jstream(fpath, std::ifstream::binary);
+	if (!jstream.is_open()) {
+		errmsg = "Unable to open file: " + fpath;
+		return false;
+	}
+	bool parsingSuccessful = reader.parse(jstream, root, false);
+	if (!parsingSuccessful)
+		errmsg = reader.getFormattedErrorMessages();
+
+	jstream.close();
+	return parsingSuccessful;
 }

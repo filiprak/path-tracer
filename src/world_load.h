@@ -1,6 +1,6 @@
 #pragma once
-#include "cuda_runtime.h"
 #include "world.h"
+#include "dialoglogger.h"
 #include <string>
 
 /* glm */
@@ -10,16 +10,13 @@
 #define MAX_OBJECTS_NUM		32
 #define OBJECTS_TYPES_NUM	2
 
-__host__
-void loadSceneWorldObjects(const Json::Value&);
+void loadSceneWorldObjects(Scene&, const Json::Value&, DialogLogger*);
+bool parseJsonScene(std::string, Json::Value&, std::string&);
 
-__host__
 void freeWorldObjects();
 
-__host__
 bool loadSphereObj(void*, WorldObject&);
 
-__host__
 bool loadTriangleMeshObj(void*, WorldObject&);
 
 // kd tree functions

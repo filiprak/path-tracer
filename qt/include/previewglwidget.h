@@ -33,11 +33,13 @@ private:
     QOpenGLShaderProgram m_program;
     QOpenGLTexture *m_texture;
 
+	int tex_w, tex_h;
+
 	void initShader();
-	void initPBO(int w, int h);
+	void initPBO(int, int);
 	void deletePBO();
 	void initVAO();
-	void imageTextureInit();
+	void imageTextureInit(int, int);
 	void runCUDApbotest();
 
 	void initNativeGL();

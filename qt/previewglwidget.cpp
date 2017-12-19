@@ -12,13 +12,9 @@ const char* shaderFragDefault = "shaders/default.frag";
 
 PreviewGLWidget::PreviewGLWidget(QWidget* parent)
 	: m_pbo(0), m_texcoords(0), m_indices(0),
-	m_vertices(0), m_texture(0), QOpenGLWidget(parent)
+	m_vertices(0), m_texture(0), tex_w(32), tex_h(32), QOpenGLWidget(parent)
 {
 	connect(this, SIGNAL(aboutToResize()), this, SLOT(aboutToResize_slot()), Qt::QueuedConnection);
-	//testing parameters
-	scene.camera.projection.width = 4;
-	scene.camera.projection.height = 8;
-	scene.camera.projection.num_pixels = 4 * 8;
 	printf("GLsize: %d, %d\n", this->width(), this->height());
 }
 
@@ -148,15 +144,19 @@ void PreviewGLWidget::initVAO() {
 	this->m_program.setAttributeBuffer(tcloc, GL_FLOAT, 0, 2);
 }
 
-void PreviewGLWidget::imageTextureInit() {
+void PreviewGLWidget::imageTextureInit(int w, int h) {
+	if (m_texture) {
+		m_texture->destroy();
+		m_texture = NULL;
+	}
 	m_texture = new QOpenGLTexture(QOpenGLTexture::Target2D);
 	m_texture->create();
-	assert(scene.camera.projection.width > 0);
-	assert(scene.camera.projection.height > 0);
-	m_texture->setSize(scene.camera.projection.width, scene.camera.projection.height);
+	assert(w > 0 && h > 0);
+	m_texture->setSize(w, h);
 	m_texture->setMinMagFilters(QOpenGLTexture::Nearest, QOpenGLTexture::Nearest);
 	m_texture->setFormat(QOpenGLTexture::RGBA8_UNorm);
 	m_texture->allocateStorage(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8);
+	tex_w = w; tex_h = h;
 }
 
 void PreviewGLWidget::initializeGL()
@@ -171,7 +171,7 @@ void PreviewGLWidget::initializeGL()
 	//default maximum resolution
 	initPBO(1280, 1024);
 	initVAO();
-	imageTextureInit();
+	imageTextureInit(tex_w, tex_h);
 }
 
 //debug - testing
@@ -196,9 +196,7 @@ void PreviewGLWidget::runCUDApbotest() {
 	cudaGraphicsMapResources(1, &viewPBO_cuda, 0);
 	cudaGraphicsResourceGetMappedPointer((void**)&pbo_dptr, &num_bytes, viewPBO_cuda);
 
-	pbotestRun(pbo_dptr,
-		scene.camera.projection.width,
-		scene.camera.projection.height);
+	pbotestRun(pbo_dptr, tex_w, tex_h);
 
 	// unmap buffer object
 	cudaGraphicsUnmapResources(1, &viewPBO_cuda, 0);
@@ -214,10 +212,7 @@ void PreviewGLWidget::paintGL()
 
 	runCUDApbotest();
 
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
-		scene.camera.projection.width,
-		scene.camera.projection.height,
-		GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_w, tex_h, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);

@@ -129,9 +129,3 @@ typedef struct {
 	float3 inv_direction;
 	int sign[3]; // inverse rays coordinates signs
 } Ray;
-
-
-void worldInit(const Json::Value&);
-
-// global scene object
-extern Scene scene;

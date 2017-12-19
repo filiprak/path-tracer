@@ -3,7 +3,6 @@
 #include "stdio.h"
 #include "radiance.cuh"
 #include "cudaUtility.h"
-#include "world_load.h"
 #include "cutil_math.h"
 
 
@@ -22,7 +21,7 @@ __global__
 void generatePrimaryRays(Camera cam, Ray* rays);
 
 __device__
-inline void init_ray(Ray* r, float3& orig, float3& dir) {
+inline void init_ray(Ray* r, const float3& orig, const float3& dir) {
 	r->direction = dir;
 	r->originPoint = orig;
 	r->inv_direction = make_float3(1 / dir.x, 1 / dir.y, 1 / dir.z);
@@ -32,7 +31,7 @@ inline void init_ray(Ray* r, float3& orig, float3& dir) {
 }
 
 __device__
-inline void change_ray_dir(Ray& r, float3& new_dir) {
+inline void change_ray_dir(Ray& r, const float3& new_dir) {
 	r.direction = new_dir;
 	r.inv_direction = make_float3(1 / new_dir.x, 1 / new_dir.y, 1 / new_dir.z);
 	r.sign[0] = (r.inv_direction.x < 0);
@@ -42,8 +41,8 @@ inline void change_ray_dir(Ray& r, float3& new_dir) {
 
 // Init pathtracing
 __host__
-void initPathTracing() {
-	Camera& cam = scene.camera;
+void initPathTracing(const Scene& scene) {
+	const Camera& cam = scene.camera;
 	sizeof_prim_rays = cam.projection.num_pixels * sizeof(Ray);
 
 	cudaOk(cudaMalloc(&dv_prim_rays, sizeof_prim_rays));
@@ -72,7 +71,7 @@ void cleanUpPathTracing()
 
 // Init primary rays
 __global__
-void generatePrimaryRays(Camera cam, Ray* rays, float3* pix_midpoints)
+void generatePrimaryRays(const Camera cam, Ray* rays, float3* pix_midpoints)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -115,11 +114,11 @@ void initRandomCuda(int iterHash, curandState& randState) {
 
 // Jitter rays radomly shooting them through the pixel to get anti-aliasing effect
 __global__
-void jitterPrimaryRays(Scene scene, float3* pix_midpoints, Ray* out_rays, int seed) {
+void jitterPrimaryRays(const Scene& scene, float3* pix_midpoints, Ray* out_rays, int seed) {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
-	Camera& cam = scene.camera;
+	const Camera& cam = scene.camera;
 
 	if (x < cam.projection.width && y < cam.projection.height) {
 		int index = x + (y * cam.projection.width);
@@ -146,7 +145,7 @@ void jitterPrimaryRays(Scene scene, float3* pix_midpoints, Ray* out_rays, int se
 
 // Trace rays
 __global__
-void tracePaths(int iterHash, Scene scene, Ray* primary_rays, float4* acc_image)
+void tracePaths(int iterHash, Scene& scene, Ray* primary_rays, float4* acc_image)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -170,7 +169,7 @@ void tracePaths(int iterHash, Scene scene, Ray* primary_rays, float4* acc_image)
 
 //DEBUG
 __global__
-void debugTexture(Scene scene) {
+void debugTexture(Scene& scene) {
 	for (int i = 0; i < scene.num_wobjects; ++i) {
 		WorldObject& obj = scene.dv_wobjects_ptr[i];
 
@@ -193,7 +192,7 @@ void debugTexture(Scene scene) {
 }
 
 __host__
-void runPathTracing(int iterHash, int jitterHash)
+void runPathTracing(Scene& scene, int iterHash, int jitterHash)
 {
 	Camera& cam = scene.camera;
 

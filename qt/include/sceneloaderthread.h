@@ -6,21 +6,15 @@
 
 class SceneLoaderThread : public QThread
 {
-    Q_OBJECT
-    void run() override {
-        for (int i = 0; i < 100; ++i) {
-            logger->info("Progress: %d", i);
-            logger->progress(i);
-            msleep(20);
-        }
-        logger->error("Finished!");
-        logger->progress(100);
-    }
+	Q_OBJECT
 public:
-    SceneLoaderThread(DialogLogger* logger);
+    SceneLoaderThread(QString src_file, DialogLogger* logger);
 
 private:
     DialogLogger* logger;
+	QString src_file;
+
+	void run() override;
 };
 
 #endif // SCENELOADERTHREAD_H

@@ -34,7 +34,7 @@ if (Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Gui_FOUND)
 	message("-- Found ${Qt5Core_LIBRARIES}")
 	message("-- Found ${Qt5Gui_LIBRARIES}")
 	message("-- Found ${Qt5Widgets_LIBRARIES}")
-else(Qt5Core_FOUND AND Qt5Widgets_FOUND)
+else(Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Gui_FOUND)
 	message("-- Qt5 required packages not found !")
 endif()
 
