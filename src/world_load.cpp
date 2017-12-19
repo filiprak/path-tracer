@@ -27,6 +27,9 @@
 #include <glm/gtc/type_ptr.hpp>
 
 
+static DialogLogger* reporter = NULL;
+#define REPORT(t) if (reporter) reporter->t;
+
 WorldObjectsSources world_obj_sources;
 
 // cuda device resources collections
@@ -217,6 +220,7 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 		aiString texture_path;
 
 		printf("  Loading material[%d]: name: %s, type: %s\n", i, name.C_Str(), mat_type.c_str());
+		REPORT(info("  Loading material[%d]: name: %s, type: %s", i, name.C_Str(), mat_type.c_str()));
 
 		material->Get(AI_MATKEY_COLOR_AMBIENT, Ka);
 		material->Get(AI_MATKEY_COLOR_DIFFUSE, Kd);
@@ -238,20 +242,25 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 		if (num_tex_ambient > 0) {
 			material->GetTexture(aiTextureType_AMBIENT, 0, &texture_path);
 			printf("    Loading ambient texture: %s\n", texture_path.C_Str());
+			REPORT(info("    Loading ambient texture: %s", texture_path.C_Str()));
 			mat_ptr[i].cuda_texture_obj = loadTexture(std::string(texture_path.C_Str()));
 		}
 		else if (num_tex_diffuse > 0) {
 			material->GetTexture(aiTextureType_DIFFUSE, 0, &texture_path);
 			printf("    Loading diffuse texture: %s\n", texture_path.C_Str());
+			REPORT(info("    Loading diffuse texture: %s", texture_path.C_Str()));
 			mat_ptr[i].cuda_texture_obj = loadTexture(std::string(texture_path.C_Str()));
 		}
 		else if (num_tex_emissive > 0) {
 			material->GetTexture(aiTextureType_EMISSIVE, 0, &texture_path);
 			printf("    Loading emissive texture: %s\n", texture_path.C_Str());
+			REPORT(info("    Loading emissive texture: %s", texture_path.C_Str()));
 			mat_ptr[i].cuda_texture_obj = loadTexture(std::string(texture_path.C_Str()));
 		}
-		if (mat_ptr[i].cuda_texture_obj < 0 && num_tex_ambient + num_tex_diffuse + num_tex_emissive > 0)
+		if (mat_ptr[i].cuda_texture_obj < 0 && num_tex_ambient + num_tex_diffuse + num_tex_emissive > 0) {
 			printf("    Warning: texture load failed\n");
+			REPORT(warning("    Warning: texture load failed"));
+		}
 		
 		mat_ptr[i].norm_color = make_float3(Kd.r, Kd.g, Kd.b);
 		mat_ptr[i].color = 255.0f * make_float3(Kd.r, Kd.g, Kd.b);
@@ -428,6 +437,7 @@ bool loadSphereObj(void* objInfo, WorldObject& result) {
 	SphereObjInfo* info = (SphereObjInfo*)objInfo;
 
 	printf("Loading Sphere Object: r=%f, pos=[%f,%f,%f]\n", info->radius, info->position.x, info->position.y, info->position.z);
+	REPORT(info("Loading Sphere Object: r=%f, pos=[%f,%f,%f]", info->radius, info->position.x, info->position.y, info->position.z));
 	SphereGeometryData* gptr = (SphereGeometryData*)malloc(sizeof(SphereGeometryData));
 	
 	gptr->position = info->position;
@@ -455,6 +465,7 @@ bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 
 	Assimp::Importer importer;
 	printf("Loading Mesh Object: %s\n", info->src_filename);
+	REPORT(info("Loading Mesh Object: %s", info->src_filename));
 	const aiScene* aiscene = importer.ReadFile(info->src_filename,
 		aiProcess_CalcTangentSpace |
 		aiProcess_Triangulate |
@@ -472,6 +483,7 @@ bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 		{
 			const aiTexture* aitex = aiscene->mTextures[i];
 			printf(" Loading texture[%d]: %s %dx%d\n", i, aitex->achFormatHint, aitex->mWidth, aitex->mHeight);
+			REPORT(info(" Loading texture[%d]: %s %dx%d", i, aitex->achFormatHint, aitex->mWidth, aitex->mHeight));
 			for (int x = 0; x < aitex->mWidth; x++)
 			{
 				for (int y = 0; y < aitex->mHeight; y++)
@@ -506,9 +518,11 @@ bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 	gptr->triangles_tex = loadTrianglesToCudaTexture(dv_tex_triangle_data, all_trgs_count);
 	int trgs_mem_size = all_trgs_count * sizeof(Triangle) / 1024;
 	printf("  Loaded %d triangles in %d meshes. (Glob. memory taken: %d KB)\n", gptr->num_triangles, aiscene->mNumMeshes, trgs_mem_size);
-	
+	REPORT(info("  Loaded %d triangles in %d meshes. (Glob. memory taken: %d KB)", gptr->num_triangles, aiscene->mNumMeshes, trgs_mem_size));
+
 	// build kd tree
 	printf("  Building KD-Tree for all triangles (%d).\n", all_trgs_count);
+	REPORT(info("  Building KD-Tree for all triangles (%d).", all_trgs_count));
 	int* trg_idxs = (int*)malloc(all_trgs_count * sizeof(int));
 	for (int idx = 0; idx < all_trgs_count; idx++)
 		trg_idxs[idx] = idx;
@@ -553,12 +567,12 @@ WorldObject* loadWorldObjects() {
 	wo_ptr = (WorldObject*)malloc(num_objects * sizeof(WorldObject));
 
 	for (int i = 0; i < num_objects; ++i) {
+		REPORT(progress((int) (100.0f * (float)i / (float)num_objects)));
 		WorldObjType type = world_obj_sources.sources[i].type;
 		void* objInfo = world_obj_sources.sources[i].worldObjectInfo;
 		if (!(*world_obj_sources.loadFuncMapping[type])(objInfo, wo_ptr[i]))
 			return NULL;
 	}
-
 	cudaOk(cudaMalloc(&dv_wo_ptr, num_objects * sizeof(WorldObject)));
 	cudaOk(cudaMemcpy(dv_wo_ptr, wo_ptr, num_objects * sizeof(WorldObject), cudaMemcpyHostToDevice));
 
@@ -567,7 +581,7 @@ WorldObject* loadWorldObjects() {
 	return dv_wo_ptr;
 }
 
-void loadSceneWorldObjects(Scene& scene, const Json::Value& jscene, DialogLogger* logger) {
+bool loadSceneWorldObjects(Scene& scene, const Json::Value& jscene, DialogLogger* logger) {
 	printSep();
 	printf("Memory struct sizes:\n");
 	printf("Sizeof: %s = %d\n", "WorldObject", sizeof(WorldObject));
@@ -579,24 +593,33 @@ void loadSceneWorldObjects(Scene& scene, const Json::Value& jscene, DialogLogger
 	printf("Sizeof: %s = %d\n", "Material", sizeof(Material));
 	printSep();
 	try {
+		// setup logger
+		reporter = logger;
 		initWorldObjSources(scene, jscene);
 		scene.camera.init(jscene["camera"]);
 		scene.dv_wobjects_ptr = loadWorldObjects();
+		REPORT(progress(100));
+		reporter = NULL;
+		return true;
 	}
 	catch (const scene_file_error& e) {
 		freeWorldObjects();
-		logger->error("Scene file error: %s", e.what());
+		REPORT(error("Scene file error: %s", e.what()));
+		reporter = NULL;
+		return false;
 	}
 }
 
 void freeWorldObjects() {
 	// free kd trees
 	for (int i = 0; i < dv_mem_kdtrees_ptrs.size(); ++i) {
-		freeCudaKDTree((KDNode*)dv_mem_kdtrees_ptrs[i]);
+		if (dv_mem_kdtrees_ptrs[i])
+			freeCudaKDTree((KDNode*)dv_mem_kdtrees_ptrs[i]);
 	}
 	// free allocated cuda memory
 	for (int i = 0; i < dv_mem_ptrs.size(); ++i) {
-		cudaOk(cudaFree(dv_mem_ptrs[i]));
+		if (dv_mem_ptrs[i])
+			cudaOk(cudaFree(dv_mem_ptrs[i]));
 	}
 	// free cuda texture objects
 	for (int i = 0; i < dv_textures.size(); i++)

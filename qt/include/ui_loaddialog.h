@@ -46,7 +46,7 @@ public:
         verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
         progressBar = new QProgressBar(LoadDialog);
         progressBar->setObjectName(QStringLiteral("progressBar"));
-        progressBar->setValue(24);
+        progressBar->setValue(0);
 
         verticalLayout->addWidget(progressBar);
 

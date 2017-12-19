@@ -15,6 +15,7 @@ public:
     void info(const char* format, ...);
     void error(const char* format, ...);
     void warning(const char* format, ...);
+	void green(const char* format, ...);
 
     void progress(int p);
 

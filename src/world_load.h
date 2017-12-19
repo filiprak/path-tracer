@@ -10,7 +10,7 @@
 #define MAX_OBJECTS_NUM		32
 #define OBJECTS_TYPES_NUM	2
 
-void loadSceneWorldObjects(Scene&, const Json::Value&, DialogLogger*);
+bool loadSceneWorldObjects(Scene&, const Json::Value&, DialogLogger*);
 bool parseJsonScene(std::string, Json::Value&, std::string&);
 
 void freeWorldObjects();

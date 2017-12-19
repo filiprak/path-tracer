@@ -14,8 +14,10 @@ void SceneLoaderThread::run() {
 
 	logger->info("Parsing scene file: %s", (const char*)src_file.toLocal8Bit());
 	if (parseJsonScene(std::string(src_file.toLocal8Bit()), jscene, errmsg)) {
-		sceneState.load(jscene, logger);
-		logger->info("Loaded scene: %s", (const char*)src_file.toLocal8Bit());
+		if(sceneState.load(jscene, logger))
+			logger->green("Loaded scene: %s", (const char*)src_file.toLocal8Bit());
+		else
+			logger->error("Failed to load scene: %s", errmsg.c_str());
 	} else
 		logger->error("Scene file parse error: %s", errmsg.c_str());
 }

@@ -19,17 +19,14 @@ SceneState::~SceneState()
 
 bool SceneState::load(const Json::Value& jscene, DialogLogger* logger) {
 	mutex.lock();
-	loadSceneWorldObjects(this->scene, jscene, logger);
-	this->loaded = true;
+	freeWorldObjects();
+	this->loaded = loadSceneWorldObjects(this->scene, jscene, logger);
 	mutex.unlock();
-	return true;
+	return this->loaded;
 }
 
 bool SceneState::isLoaded() {
-	mutex.lock();
-	bool res = this->loaded;
-	mutex.unlock();
-	return res;
+	return this->loaded;
 }
 bool SceneState::clean() {
 	mutex.lock();
