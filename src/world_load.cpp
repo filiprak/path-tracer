@@ -116,9 +116,13 @@ void initWorldObjSources(Scene& scene, const Json::Value& jscene) {
 
 void freeWorldObjSources() {
 	// create world objects - compose our scene
-	for (int i = 0; i < MAX_OBJECTS_NUM; ++i) {
+	for (int i = 0; i < world_obj_sources.num_objects; ++i) {
 		if (world_obj_sources.sources[i].worldObjectInfo != NULL)
 			free(world_obj_sources.sources[i].worldObjectInfo);
+	}
+	for (int i = 0; i < MAX_OBJECTS_NUM; i++)
+	{
+		world_obj_sources.sources[i].worldObjectInfo = NULL;
 	}
 	world_obj_sources.num_objects = 0;
 }

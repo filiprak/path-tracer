@@ -12,6 +12,7 @@
 
 // cuda pbo image resource
 cudaGraphicsResource* viewPBO_cuda;
+uchar4 *pbo_dptr = NULL;
 
 float4* device_accum_image = NULL;
 
@@ -92,18 +93,23 @@ cudaError_t kernelMain(uchar4* pbo, Scene& scene, int iter)
     return cudaGetLastError();
 }
 
-//debug
-void runCUDA(Scene& scene, int iter) {
-	uchar4 *pbo_dptr = NULL;
+
+void runCUDA(uchar4 *pbo_dptr, Scene& scene, int iter) {
+	/*uchar4 *pbo_dptr = NULL;
 	size_t num_bytes;
 
 	// map buffer object
-	cudaGraphicsMapResources(1, &viewPBO_cuda, 0);
-	cudaGraphicsResourceGetMappedPointer((void**)&pbo_dptr, &num_bytes, viewPBO_cuda);
+	cudaOk(cudaGraphicsMapResources(1, &viewPBO_cuda));
+	cudaOk(cudaGraphicsResourceGetMappedPointer((void**)&pbo_dptr, &num_bytes, viewPBO_cuda));*/
 
-	kernelMain(pbo_dptr, scene, iter);
+	if (pbo_dptr)
+		kernelMain(pbo_dptr, scene, iter);
+	else {
+		printf("Failed to map pbo pointer.\n");
+		checkCudaError("cudaGraphicsMapResources(), cudaGraphicsResourceGetMappedPointer()");
+	}
 
-	// unmap buffer object
-	cudaGraphicsUnmapResources(1, &viewPBO_cuda, 0);
+	/*// unmap buffer object
+	cudaOk(cudaGraphicsUnmapResources(1, &viewPBO_cuda, 0));*/
 }
 

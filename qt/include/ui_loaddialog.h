@@ -46,7 +46,7 @@ public:
         verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
         progressBar = new QProgressBar(LoadDialog);
         progressBar->setObjectName(QStringLiteral("progressBar"));
-        progressBar->setValue(0);
+        progressBar->setValue(24);
 
         verticalLayout->addWidget(progressBar);
 
@@ -67,6 +67,7 @@ public:
 
         pushButton = new QPushButton(widget);
         pushButton->setObjectName(QStringLiteral("pushButton"));
+        pushButton->setCursor(QCursor(Qt::PointingHandCursor));
 
         horizontalLayout->addWidget(pushButton);
 

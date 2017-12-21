@@ -114,7 +114,7 @@ void initRandomCuda(int iterHash, curandState& randState) {
 
 // Jitter rays radomly shooting them through the pixel to get anti-aliasing effect
 __global__
-void jitterPrimaryRays(const Scene& scene, float3* pix_midpoints, Ray* out_rays, int seed) {
+void jitterPrimaryRays(Scene scene, float3* pix_midpoints, Ray* out_rays, int seed) {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
@@ -145,12 +145,12 @@ void jitterPrimaryRays(const Scene& scene, float3* pix_midpoints, Ray* out_rays,
 
 // Trace rays
 __global__
-void tracePaths(int iterHash, Scene& scene, Ray* primary_rays, float4* acc_image)
+void tracePaths(int iterHash, Scene scene, Ray* primary_rays, float4* acc_image)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
-	Camera& cam = scene.camera;
+	const Camera& cam = scene.camera;
 	
 	if (x < cam.projection.width && y < cam.projection.height) {
 		int index = x + (y * cam.projection.width);
@@ -169,7 +169,7 @@ void tracePaths(int iterHash, Scene& scene, Ray* primary_rays, float4* acc_image
 
 //DEBUG
 __global__
-void debugTexture(Scene& scene) {
+void debugTexture(Scene scene) {
 	for (int i = 0; i < scene.num_wobjects; ++i) {
 		WorldObject& obj = scene.dv_wobjects_ptr[i];
 

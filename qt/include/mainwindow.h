@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QMessageBox>
+#include "cudarunthread.h"
+
 
 namespace Ui {
 class MainWindow;
@@ -17,6 +19,10 @@ public:
     ~MainWindow();
 
 private slots:
+	void toggle_saveiters(int);
+
+	void update_stats(int, double);
+
     void on_actionSettings_triggered();
 
     void on_actionClose_triggered();
@@ -27,7 +33,9 @@ private slots:
 
     void on_fsave_btn_clicked();
 
-    void on_stop_btn_clicked();
+	void on_resume_btn_clicked();
+
+	void on_pause_btn_clicked();
 
     void on_restart_btn_clicked();
 
@@ -53,10 +61,17 @@ private slots:
 
     void on_z_spinbox_valueChanged(double arg1);
 
+	void on_right_btn_clicked();
+
 private:
     Ui::MainWindow *ui;
+
+	CudaRunThread* cuda_thread;
+
     void closeEvent(QCloseEvent *Event);
+	void showEvent(QShowEvent *Event);
     bool askForClosing();
+	void stop_rendering();
 };
 
 #endif // MAINWINDOW_H

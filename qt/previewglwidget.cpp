@@ -1,5 +1,6 @@
 #include "previewglwidget.h"
 #include "world.h"
+#include "cudaUtility.h"
 #include "pbotest.h"
 #include <cuda_gl_interop.h>
 
@@ -12,10 +13,10 @@ const char* shaderFragDefault = "shaders/default.frag";
 
 PreviewGLWidget::PreviewGLWidget(QWidget* parent)
 	: m_pbo(0), m_texcoords(0), m_indices(0),
-	m_vertices(0), m_texture(0), tex_w(32), tex_h(32), QOpenGLWidget(parent)
+	m_vertices(0), m_texture(0), QOpenGLWidget(parent)
 {
 	connect(this, SIGNAL(aboutToResize()), this, SLOT(aboutToResize_slot()), Qt::QueuedConnection);
-	printf("GLsize: %d, %d\n", this->width(), this->height());
+	printf("GLsize: %d, %d\n", width(), height());
 }
 
 PreviewGLWidget::~PreviewGLWidget()
@@ -51,26 +52,26 @@ QString PreviewGLWidget::getGLinfo() {
 void PreviewGLWidget::initShader() {
 	
 	// Compile vertex shader
-	if (!this->m_program.addShaderFromSourceFile(QOpenGLShader::Vertex, shaderVertDefault)) {
-		printf("PreviewGLWidget::initShader(): compile vert: %s\n", this->m_program.log().toStdString().c_str());
+	if (!m_program.addShaderFromSourceFile(QOpenGLShader::Vertex, shaderVertDefault)) {
+		printf("PreviewGLWidget::initShader(): compile vert: %s\n", m_program.log().toStdString().c_str());
 		close();
 	}
 
 	// Compile fragment shader
-	if (!this->m_program.addShaderFromSourceFile(QOpenGLShader::Fragment, shaderFragDefault)) {
-		printf("PreviewGLWidget::initShader(): compile frag: %s\n", this->m_program.log().toStdString().c_str());
+	if (!m_program.addShaderFromSourceFile(QOpenGLShader::Fragment, shaderFragDefault)) {
+		printf("PreviewGLWidget::initShader(): compile frag: %s\n", m_program.log().toStdString().c_str());
 		close();
 	}
 
 	// Link shader pipeline
-	if (!this->m_program.link()) {
-		printf("PreviewGLWidget::initShader() link: %s\n", this->m_program.log().toStdString().c_str());
+	if (!m_program.link()) {
+		printf("PreviewGLWidget::initShader() link: %s\n", m_program.log().toStdString().c_str());
 		close();
 	}
 
 	// Bind shader pipeline for use
-	if (!this->m_program.bind()) {
-		printf("PreviewGLWidget::initShader() bind: %s\n", this->m_program.log().toStdString().c_str());
+	if (!m_program.bind()) {
+		printf("PreviewGLWidget::initShader() bind: %s\n", m_program.log().toStdString().c_str());
 		close();
 	}
 }
@@ -78,23 +79,32 @@ void PreviewGLWidget::initShader() {
 void PreviewGLWidget::initPBO(int w, int h) {
 	int sizeof_pbo = 4 * w * h * sizeof(GLubyte);
 	assert(sizeof_pbo > 0);
-	this->m_pbo = new QOpenGLBuffer(QOpenGLBuffer::PixelUnpackBuffer);
-	this->m_pbo->setUsagePattern(QOpenGLBuffer::StaticDraw);
-	this->m_pbo->create();
-	this->m_pbo->bind();
-	this->m_pbo->allocate(sizeof_pbo);
-	cudaGraphicsGLRegisterBuffer(&viewPBO_cuda, this->m_pbo->bufferId(), cudaGraphicsMapFlagsWriteDiscard);
+	m_pbo = new QOpenGLBuffer(QOpenGLBuffer::PixelUnpackBuffer);
+	m_pbo->setUsagePattern(QOpenGLBuffer::StaticDraw);
+	m_pbo->create();
+	m_pbo->bind();
+	m_pbo->allocate(sizeof_pbo);
+	cudaOk(cudaGraphicsGLRegisterBuffer(&viewPBO_cuda, m_pbo->bufferId(), cudaGraphicsMapFlagsWriteDiscard));
+
+	size_t num_bytes;
+
+	// map buffer object
+	cudaOk(cudaGraphicsMapResources(1, &viewPBO_cuda));
+	cudaOk(cudaGraphicsResourceGetMappedPointer((void**)&pbo_dptr, &num_bytes, viewPBO_cuda));
+	assert(pbo_dptr);
 }
 
 void PreviewGLWidget::deletePBO() {
-	if (this->m_pbo) {
-		cudaGraphicsUnregisterResource(viewPBO_cuda);
+	if (m_pbo) {
+		// unmap buffer object
+		cudaOk(cudaGraphicsUnmapResources(1, &viewPBO_cuda, 0));
+		cudaOk(cudaGraphicsUnregisterResource(viewPBO_cuda));
 
-		this->m_pbo->bind();
-		this->m_pbo->destroy();
+		m_pbo->bind();
+		m_pbo->destroy();
 
-		delete this->m_pbo;
-		this->m_pbo = NULL;
+		delete m_pbo;
+		m_pbo = NULL;
 	}
 }
 
@@ -134,14 +144,14 @@ void PreviewGLWidget::initVAO() {
 	m_texcoords->allocate(texcoords, sizeof(texcoords));
 
 	m_vertices->bind();
-	int vloc = this->m_program.attributeLocation("Position");
-	this->m_program.enableAttributeArray(vloc);
-	this->m_program.setAttributeBuffer(vloc, GL_FLOAT, 0, 2);
+	int vloc = m_program.attributeLocation("Position");
+	m_program.enableAttributeArray(vloc);
+	m_program.setAttributeBuffer(vloc, GL_FLOAT, 0, 2);
 
 	m_texcoords->bind();
-	int tcloc = this->m_program.attributeLocation("Texcoords");
-	this->m_program.enableAttributeArray(tcloc);
-	this->m_program.setAttributeBuffer(tcloc, GL_FLOAT, 0, 2);
+	int tcloc = m_program.attributeLocation("Texcoords");
+	m_program.enableAttributeArray(tcloc);
+	m_program.setAttributeBuffer(tcloc, GL_FLOAT, 0, 2);
 }
 
 void PreviewGLWidget::imageTextureInit(int w, int h) {
@@ -155,8 +165,7 @@ void PreviewGLWidget::imageTextureInit(int w, int h) {
 	m_texture->setSize(w, h);
 	m_texture->setMinMagFilters(QOpenGLTexture::Nearest, QOpenGLTexture::Nearest);
 	m_texture->setFormat(QOpenGLTexture::RGBA8_UNorm);
-	m_texture->allocateStorage(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8);
-	tex_w = w; tex_h = h;
+	m_texture->allocateStorage(QOpenGLTexture::BGRA, QOpenGLTexture::UInt8);
 }
 
 void PreviewGLWidget::initializeGL()
@@ -164,22 +173,22 @@ void PreviewGLWidget::initializeGL()
 	initializeOpenGLFunctions();
 
 	// Setup view rendering
-	printf("GLsize: %d, %d\n", this->width(), this->height());
+	printf("GLsize: %d, %d\n", width(), height());
 	// compile and link shader
 	initShader();
 
 	//default maximum resolution
 	initPBO(1280, 1024);
 	initVAO();
-	imageTextureInit(tex_w, tex_h);
+	imageTextureInit(32, 32);
 }
 
 //debug - testing
 void PreviewGLWidget::aboutToResize_slot()
 {
 	//deletePBO();
-	//initPBO(this->width(), this->height());
-	printf("aboutToResize_slot: %d, %d\n", this->width(), this->height());
+	//initPBO(width(), height());
+	printf("aboutToResize_slot: %d, %d\n", width(), height());
 }
 
 void PreviewGLWidget::resizeGL(int w, int h)
@@ -187,33 +196,24 @@ void PreviewGLWidget::resizeGL(int w, int h)
 	printf("resizeGL: %d, %d\n", w, h);
 }
 
-//debug
-void PreviewGLWidget::runCUDApbotest() {
-	uchar4 *pbo_dptr = NULL;
-	size_t num_bytes;
-
-	// map buffer object
-	cudaGraphicsMapResources(1, &viewPBO_cuda, 0);
-	cudaGraphicsResourceGetMappedPointer((void**)&pbo_dptr, &num_bytes, viewPBO_cuda);
-
-	pbotestRun(pbo_dptr, tex_w, tex_h);
-
-	// unmap buffer object
-	cudaGraphicsUnmapResources(1, &viewPBO_cuda, 0);
-}
-
 void PreviewGLWidget::paintGL()
 {
-	this->m_pbo->bind();
-	this->m_texture->bind();
+	m_pbo->bind();
+	m_texture->bind();
 
 	printf("GL error: %d\n", glGetError());
-	printf("GLsize: %d, %d\n", this->width(), this->height());
+	printf("GLsize: %d, %d\n", width(), height());
 
-	runCUDApbotest();
-
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_w, tex_h, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_texture->width(), m_texture->height(), GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+}
+
+void PreviewGLWidget::refresh(int iter, double time) {
+	update();
+}
+
+void PreviewGLWidget::reloadTexture(int w, int h) {
+	imageTextureInit(w, h);
 }

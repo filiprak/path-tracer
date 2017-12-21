@@ -17,7 +17,7 @@ public:
     ~PreviewGLWidget();
 
 	QString getGLinfo();
-	
+	void reloadTexture(int, int);
 
 protected:
     void initializeGL() override;
@@ -33,8 +33,6 @@ private:
     QOpenGLShaderProgram m_program;
     QOpenGLTexture *m_texture;
 
-	int tex_w, tex_h;
-
 	void initShader();
 	void initPBO(int, int);
 	void deletePBO();
@@ -48,6 +46,8 @@ private:
 private slots:
 	void aboutToResize_slot();
 
+public slots:
+	void refresh(int, double);
 };
 
 #endif // PREVIEWGLWIDGET_H

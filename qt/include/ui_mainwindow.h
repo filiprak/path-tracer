@@ -56,41 +56,52 @@ public:
     QGroupBox *cam_groupbox;
     QFormLayout *formLayout_2;
     QLabel *pos_label;
-    QWidget *cpos_xyz;
-    QHBoxLayout *horizontalLayout;
-    QDoubleSpinBox *x_spinbox;
-    QDoubleSpinBox *y_spinbox;
-    QDoubleSpinBox *z_spinbox;
     QLabel *hang_label;
     QDoubleSpinBox *hang_spinbox;
     QLabel *vang_label;
     QDoubleSpinBox *vang_spinbox;
-    QCheckBox *prev_checkbox;
     QCheckBox *aabb_checkbox;
     QCheckBox *text_checkbox;
+    QWidget *cpos_xyz;
+    QHBoxLayout *horizontalLayout;
+    QDoubleSpinBox *x_spinbox;
+    QDoubleSpinBox *z_spinbox;
+    QDoubleSpinBox *y_spinbox;
+    QLabel *aajitter_label;
+    QCheckBox *prev_checkbox;
+    QDoubleSpinBox *aajitter_spinbox;
     QGroupBox *image_groupbox;
     QFormLayout *formLayout_3;
     QLabel *gamm_label;
     QDoubleSpinBox *gamm_spinbox;
     QLabel *fname_label;
     QLineEdit *fname_lineedit;
+    QCheckBox *autosave_checkbox;
+    QWidget *widget_3;
+    QHBoxLayout *horizontalLayout_4;
+    QLabel *every_label;
+    QSpinBox *save_iters;
     QPushButton *fsave_btn;
     QGroupBox *patht_groupbox;
     QFormLayout *formLayout;
-    QPushButton *stop_btn;
-    QPushButton *restart_btn;
-    QLabel *maxd_label;
-    QSpinBox *maxd_spinbox;
-    QLabel *aajitter_label;
-    QDoubleSpinBox *aajitter_spinbox;
     QLabel *iter_label;
     QLCDNumber *lcdNumber;
+    QLabel *maxd_label;
+    QSpinBox *maxd_spinbox;
+    QWidget *widget;
+    QHBoxLayout *horizontalLayout_2;
+    QPushButton *resume_btn;
+    QPushButton *pause_btn;
+    QPushButton *restart_btn;
+    QWidget *widget_2;
+    QHBoxLayout *horizontalLayout_3;
+    QPushButton *right_btn;
 
     void setupUi(QMainWindow *MainWindow)
     {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName(QStringLiteral("MainWindow"));
-        MainWindow->resize(927, 593);
+        MainWindow->resize(1078, 631);
         MainWindow->setLayoutDirection(Qt::LeftToRight);
         actionSettings = new QAction(MainWindow);
         actionSettings->setObjectName(QStringLiteral("actionSettings"));
@@ -117,6 +128,7 @@ public:
         brush1.setStyle(Qt::SolidPattern);
         palette.setBrush(QPalette::Disabled, QPalette::WindowText, brush1);
         previewGLWidget->setPalette(palette);
+        previewGLWidget->setCursor(QCursor(Qt::CrossCursor));
         previewGLWidget->setLayoutDirection(Qt::RightToLeft);
 
         gridLayout->addWidget(previewGLWidget, 1, 0, 1, 1);
@@ -124,7 +136,7 @@ public:
         MainWindow->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(MainWindow);
         menuBar->setObjectName(QStringLiteral("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 927, 20));
+        menuBar->setGeometry(QRect(0, 0, 1078, 20));
         menuFile = new QMenu(menuBar);
         menuFile->setObjectName(QStringLiteral("menuFile"));
         menuHelp = new QMenu(menuBar);
@@ -152,31 +164,6 @@ public:
 
         formLayout_2->setWidget(1, QFormLayout::LabelRole, pos_label);
 
-        cpos_xyz = new QWidget(cam_groupbox);
-        cpos_xyz->setObjectName(QStringLiteral("cpos_xyz"));
-        horizontalLayout = new QHBoxLayout(cpos_xyz);
-        horizontalLayout->setSpacing(3);
-        horizontalLayout->setContentsMargins(11, 11, 11, 11);
-        horizontalLayout->setObjectName(QStringLiteral("horizontalLayout"));
-        horizontalLayout->setContentsMargins(0, 0, 0, 0);
-        x_spinbox = new QDoubleSpinBox(cpos_xyz);
-        x_spinbox->setObjectName(QStringLiteral("x_spinbox"));
-
-        horizontalLayout->addWidget(x_spinbox);
-
-        y_spinbox = new QDoubleSpinBox(cpos_xyz);
-        y_spinbox->setObjectName(QStringLiteral("y_spinbox"));
-
-        horizontalLayout->addWidget(y_spinbox);
-
-        z_spinbox = new QDoubleSpinBox(cpos_xyz);
-        z_spinbox->setObjectName(QStringLiteral("z_spinbox"));
-
-        horizontalLayout->addWidget(z_spinbox);
-
-
-        formLayout_2->setWidget(1, QFormLayout::FieldRole, cpos_xyz);
-
         hang_label = new QLabel(cam_groupbox);
         hang_label->setObjectName(QStringLiteral("hang_label"));
 
@@ -184,6 +171,10 @@ public:
 
         hang_spinbox = new QDoubleSpinBox(cam_groupbox);
         hang_spinbox->setObjectName(QStringLiteral("hang_spinbox"));
+        hang_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
+        hang_spinbox->setMinimum(-360);
+        hang_spinbox->setMaximum(360);
+        hang_spinbox->setSingleStep(5);
 
         formLayout_2->setWidget(3, QFormLayout::FieldRole, hang_spinbox);
 
@@ -194,24 +185,88 @@ public:
 
         vang_spinbox = new QDoubleSpinBox(cam_groupbox);
         vang_spinbox->setObjectName(QStringLiteral("vang_spinbox"));
+        vang_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
+        vang_spinbox->setDecimals(1);
+        vang_spinbox->setMinimum(-360);
+        vang_spinbox->setMaximum(360);
+        vang_spinbox->setSingleStep(5);
+        vang_spinbox->setValue(0);
 
         formLayout_2->setWidget(4, QFormLayout::FieldRole, vang_spinbox);
 
-        prev_checkbox = new QCheckBox(cam_groupbox);
-        prev_checkbox->setObjectName(QStringLiteral("prev_checkbox"));
-
-        formLayout_2->setWidget(5, QFormLayout::FieldRole, prev_checkbox);
-
         aabb_checkbox = new QCheckBox(cam_groupbox);
         aabb_checkbox->setObjectName(QStringLiteral("aabb_checkbox"));
+        aabb_checkbox->setCursor(QCursor(Qt::PointingHandCursor));
 
-        formLayout_2->setWidget(6, QFormLayout::FieldRole, aabb_checkbox);
+        formLayout_2->setWidget(7, QFormLayout::FieldRole, aabb_checkbox);
 
         text_checkbox = new QCheckBox(cam_groupbox);
         text_checkbox->setObjectName(QStringLiteral("text_checkbox"));
+        text_checkbox->setCursor(QCursor(Qt::PointingHandCursor));
         text_checkbox->setChecked(true);
 
-        formLayout_2->setWidget(7, QFormLayout::FieldRole, text_checkbox);
+        formLayout_2->setWidget(8, QFormLayout::FieldRole, text_checkbox);
+
+        cpos_xyz = new QWidget(cam_groupbox);
+        cpos_xyz->setObjectName(QStringLiteral("cpos_xyz"));
+        horizontalLayout = new QHBoxLayout(cpos_xyz);
+        horizontalLayout->setSpacing(3);
+        horizontalLayout->setContentsMargins(11, 11, 11, 11);
+        horizontalLayout->setObjectName(QStringLiteral("horizontalLayout"));
+        horizontalLayout->setContentsMargins(0, 0, 0, 0);
+        x_spinbox = new QDoubleSpinBox(cpos_xyz);
+        x_spinbox->setObjectName(QStringLiteral("x_spinbox"));
+        x_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
+        x_spinbox->setInputMethodHints(Qt::ImhNone);
+        x_spinbox->setReadOnly(false);
+        x_spinbox->setButtonSymbols(QAbstractSpinBox::UpDownArrows);
+        x_spinbox->setAccelerated(false);
+        x_spinbox->setProperty("showGroupSeparator", QVariant(false));
+        x_spinbox->setDecimals(2);
+        x_spinbox->setMinimum(-999.99);
+        x_spinbox->setMaximum(999.99);
+        x_spinbox->setValue(0);
+
+        horizontalLayout->addWidget(x_spinbox);
+
+        z_spinbox = new QDoubleSpinBox(cpos_xyz);
+        z_spinbox->setObjectName(QStringLiteral("z_spinbox"));
+        z_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
+        z_spinbox->setMinimum(-999.99);
+        z_spinbox->setMaximum(999.99);
+        z_spinbox->setValue(0);
+
+        horizontalLayout->addWidget(z_spinbox);
+
+        y_spinbox = new QDoubleSpinBox(cpos_xyz);
+        y_spinbox->setObjectName(QStringLiteral("y_spinbox"));
+        y_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
+        y_spinbox->setMinimum(-999.99);
+        y_spinbox->setMaximum(999.99);
+
+        horizontalLayout->addWidget(y_spinbox);
+
+
+        formLayout_2->setWidget(1, QFormLayout::FieldRole, cpos_xyz);
+
+        aajitter_label = new QLabel(cam_groupbox);
+        aajitter_label->setObjectName(QStringLiteral("aajitter_label"));
+
+        formLayout_2->setWidget(5, QFormLayout::LabelRole, aajitter_label);
+
+        prev_checkbox = new QCheckBox(cam_groupbox);
+        prev_checkbox->setObjectName(QStringLiteral("prev_checkbox"));
+        prev_checkbox->setCursor(QCursor(Qt::PointingHandCursor));
+
+        formLayout_2->setWidget(6, QFormLayout::FieldRole, prev_checkbox);
+
+        aajitter_spinbox = new QDoubleSpinBox(cam_groupbox);
+        aajitter_spinbox->setObjectName(QStringLiteral("aajitter_spinbox"));
+        aajitter_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
+        aajitter_spinbox->setSingleStep(0.1);
+        aajitter_spinbox->setValue(1.5);
+
+        formLayout_2->setWidget(5, QFormLayout::FieldRole, aajitter_spinbox);
 
 
         verticalLayout->addWidget(cam_groupbox);
@@ -229,6 +284,10 @@ public:
 
         gamm_spinbox = new QDoubleSpinBox(image_groupbox);
         gamm_spinbox->setObjectName(QStringLiteral("gamm_spinbox"));
+        gamm_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
+        gamm_spinbox->setDecimals(4);
+        gamm_spinbox->setMinimum(0.1);
+        gamm_spinbox->setSingleStep(0.1);
         gamm_spinbox->setValue(1.5);
 
         formLayout_3->setWidget(0, QFormLayout::FieldRole, gamm_spinbox);
@@ -241,12 +300,47 @@ public:
         fname_lineedit = new QLineEdit(image_groupbox);
         fname_lineedit->setObjectName(QStringLiteral("fname_lineedit"));
 
-        formLayout_3->setWidget(3, QFormLayout::SpanningRole, fname_lineedit);
+        formLayout_3->setWidget(2, QFormLayout::FieldRole, fname_lineedit);
+
+        autosave_checkbox = new QCheckBox(image_groupbox);
+        autosave_checkbox->setObjectName(QStringLiteral("autosave_checkbox"));
+        autosave_checkbox->setCursor(QCursor(Qt::PointingHandCursor));
+
+        formLayout_3->setWidget(3, QFormLayout::LabelRole, autosave_checkbox);
+
+        widget_3 = new QWidget(image_groupbox);
+        widget_3->setObjectName(QStringLiteral("widget_3"));
+        horizontalLayout_4 = new QHBoxLayout(widget_3);
+        horizontalLayout_4->setSpacing(6);
+        horizontalLayout_4->setContentsMargins(11, 11, 11, 11);
+        horizontalLayout_4->setObjectName(QStringLiteral("horizontalLayout_4"));
+        horizontalLayout_4->setContentsMargins(0, 0, 0, 0);
+        every_label = new QLabel(widget_3);
+        every_label->setObjectName(QStringLiteral("every_label"));
+
+        horizontalLayout_4->addWidget(every_label);
+
+        save_iters = new QSpinBox(widget_3);
+        save_iters->setObjectName(QStringLiteral("save_iters"));
+        save_iters->setCursor(QCursor(Qt::PointingHandCursor));
+        save_iters->setWrapping(false);
+        save_iters->setFrame(true);
+        save_iters->setReadOnly(false);
+        save_iters->setProperty("showGroupSeparator", QVariant(true));
+        save_iters->setMinimum(1);
+        save_iters->setMaximum(99999999);
+        save_iters->setValue(100);
+
+        horizontalLayout_4->addWidget(save_iters);
+
+
+        formLayout_3->setWidget(3, QFormLayout::FieldRole, widget_3);
 
         fsave_btn = new QPushButton(image_groupbox);
         fsave_btn->setObjectName(QStringLiteral("fsave_btn"));
+        fsave_btn->setCursor(QCursor(Qt::PointingHandCursor));
 
-        formLayout_3->setWidget(4, QFormLayout::LabelRole, fsave_btn);
+        formLayout_3->setWidget(5, QFormLayout::FieldRole, fsave_btn);
 
 
         verticalLayout->addWidget(image_groupbox);
@@ -257,41 +351,9 @@ public:
         formLayout->setSpacing(6);
         formLayout->setContentsMargins(11, 11, 11, 11);
         formLayout->setObjectName(QStringLiteral("formLayout"));
-        stop_btn = new QPushButton(patht_groupbox);
-        stop_btn->setObjectName(QStringLiteral("stop_btn"));
-
-        formLayout->setWidget(1, QFormLayout::LabelRole, stop_btn);
-
-        restart_btn = new QPushButton(patht_groupbox);
-        restart_btn->setObjectName(QStringLiteral("restart_btn"));
-
-        formLayout->setWidget(1, QFormLayout::FieldRole, restart_btn);
-
-        maxd_label = new QLabel(patht_groupbox);
-        maxd_label->setObjectName(QStringLiteral("maxd_label"));
-
-        formLayout->setWidget(2, QFormLayout::LabelRole, maxd_label);
-
-        maxd_spinbox = new QSpinBox(patht_groupbox);
-        maxd_spinbox->setObjectName(QStringLiteral("maxd_spinbox"));
-        maxd_spinbox->setValue(5);
-        maxd_spinbox->setDisplayIntegerBase(10);
-
-        formLayout->setWidget(2, QFormLayout::FieldRole, maxd_spinbox);
-
-        aajitter_label = new QLabel(patht_groupbox);
-        aajitter_label->setObjectName(QStringLiteral("aajitter_label"));
-
-        formLayout->setWidget(3, QFormLayout::LabelRole, aajitter_label);
-
-        aajitter_spinbox = new QDoubleSpinBox(patht_groupbox);
-        aajitter_spinbox->setObjectName(QStringLiteral("aajitter_spinbox"));
-        aajitter_spinbox->setValue(1.5);
-
-        formLayout->setWidget(3, QFormLayout::FieldRole, aajitter_spinbox);
-
         iter_label = new QLabel(patht_groupbox);
         iter_label->setObjectName(QStringLiteral("iter_label"));
+        iter_label->setCursor(QCursor(Qt::ArrowCursor));
 
         formLayout->setWidget(0, QFormLayout::LabelRole, iter_label);
 
@@ -302,9 +364,67 @@ public:
         lcdNumber->setLineWidth(0);
         lcdNumber->setMode(QLCDNumber::Dec);
         lcdNumber->setSegmentStyle(QLCDNumber::Flat);
-        lcdNumber->setProperty("intValue", QVariant(30223));
+        lcdNumber->setProperty("intValue", QVariant(0));
 
         formLayout->setWidget(0, QFormLayout::FieldRole, lcdNumber);
+
+        maxd_label = new QLabel(patht_groupbox);
+        maxd_label->setObjectName(QStringLiteral("maxd_label"));
+
+        formLayout->setWidget(3, QFormLayout::LabelRole, maxd_label);
+
+        maxd_spinbox = new QSpinBox(patht_groupbox);
+        maxd_spinbox->setObjectName(QStringLiteral("maxd_spinbox"));
+        maxd_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
+        maxd_spinbox->setValue(5);
+        maxd_spinbox->setDisplayIntegerBase(10);
+
+        formLayout->setWidget(3, QFormLayout::FieldRole, maxd_spinbox);
+
+        widget = new QWidget(patht_groupbox);
+        widget->setObjectName(QStringLiteral("widget"));
+        horizontalLayout_2 = new QHBoxLayout(widget);
+        horizontalLayout_2->setSpacing(6);
+        horizontalLayout_2->setContentsMargins(11, 11, 11, 11);
+        horizontalLayout_2->setObjectName(QStringLiteral("horizontalLayout_2"));
+        horizontalLayout_2->setContentsMargins(0, 0, 0, 0);
+        resume_btn = new QPushButton(widget);
+        resume_btn->setObjectName(QStringLiteral("resume_btn"));
+        resume_btn->setCursor(QCursor(Qt::PointingHandCursor));
+
+        horizontalLayout_2->addWidget(resume_btn);
+
+        pause_btn = new QPushButton(widget);
+        pause_btn->setObjectName(QStringLiteral("pause_btn"));
+        pause_btn->setCursor(QCursor(Qt::PointingHandCursor));
+
+        horizontalLayout_2->addWidget(pause_btn);
+
+        restart_btn = new QPushButton(widget);
+        restart_btn->setObjectName(QStringLiteral("restart_btn"));
+        restart_btn->setCursor(QCursor(Qt::PointingHandCursor));
+
+        horizontalLayout_2->addWidget(restart_btn);
+
+
+        formLayout->setWidget(5, QFormLayout::SpanningRole, widget);
+
+        widget_2 = new QWidget(patht_groupbox);
+        widget_2->setObjectName(QStringLiteral("widget_2"));
+        horizontalLayout_3 = new QHBoxLayout(widget_2);
+        horizontalLayout_3->setSpacing(6);
+        horizontalLayout_3->setContentsMargins(11, 11, 11, 11);
+        horizontalLayout_3->setObjectName(QStringLiteral("horizontalLayout_3"));
+        horizontalLayout_3->setContentsMargins(0, 0, 0, 0);
+        right_btn = new QPushButton(widget_2);
+        right_btn->setObjectName(QStringLiteral("right_btn"));
+        right_btn->setMaximumSize(QSize(16777215, 16777215));
+        right_btn->setCursor(QCursor(Qt::PointingHandCursor));
+
+        horizontalLayout_3->addWidget(right_btn);
+
+
+        formLayout->setWidget(6, QFormLayout::SpanningRole, widget_2);
 
 
         verticalLayout->addWidget(patht_groupbox);
@@ -338,20 +458,26 @@ public:
         pos_label->setText(QApplication::translate("MainWindow", "Position", Q_NULLPTR));
         hang_label->setText(QApplication::translate("MainWindow", "HAngle", Q_NULLPTR));
         vang_label->setText(QApplication::translate("MainWindow", "VAngle", Q_NULLPTR));
-        prev_checkbox->setText(QApplication::translate("MainWindow", "Simple Preview Mode", Q_NULLPTR));
         aabb_checkbox->setText(QApplication::translate("MainWindow", "AABBoxes Preview mode", Q_NULLPTR));
         text_checkbox->setText(QApplication::translate("MainWindow", "Render textures", Q_NULLPTR));
+        x_spinbox->setPrefix(QString());
+        aajitter_label->setText(QApplication::translate("MainWindow", "Ray jittter", Q_NULLPTR));
+        prev_checkbox->setText(QApplication::translate("MainWindow", "Simple Preview Mode", Q_NULLPTR));
         image_groupbox->setTitle(QApplication::translate("MainWindow", "Image", Q_NULLPTR));
-        gamm_label->setText(QApplication::translate("MainWindow", "Gamma Correction Exp", Q_NULLPTR));
+        gamm_label->setText(QApplication::translate("MainWindow", "Gamma Corr. Exp", Q_NULLPTR));
         fname_label->setText(QApplication::translate("MainWindow", "File name", Q_NULLPTR));
         fname_lineedit->setText(QApplication::translate("MainWindow", "image.png", Q_NULLPTR));
+        autosave_checkbox->setText(QApplication::translate("MainWindow", "Autosave", Q_NULLPTR));
+        every_label->setText(QApplication::translate("MainWindow", "Every", Q_NULLPTR));
+        save_iters->setSuffix(QApplication::translate("MainWindow", " iterations", Q_NULLPTR));
         fsave_btn->setText(QApplication::translate("MainWindow", "Save Image", Q_NULLPTR));
         patht_groupbox->setTitle(QApplication::translate("MainWindow", "Path Tracing", Q_NULLPTR));
-        stop_btn->setText(QApplication::translate("MainWindow", "Stop", Q_NULLPTR));
-        restart_btn->setText(QApplication::translate("MainWindow", "Restart", Q_NULLPTR));
+        iter_label->setText(QApplication::translate("MainWindow", "Iteration(<time>s)", Q_NULLPTR));
         maxd_label->setText(QApplication::translate("MainWindow", "Max depth", Q_NULLPTR));
-        aajitter_label->setText(QApplication::translate("MainWindow", "Antialiasing ray jitter", Q_NULLPTR));
-        iter_label->setText(QApplication::translate("MainWindow", "Iteration(<time> ms)", Q_NULLPTR));
+        resume_btn->setText(QApplication::translate("MainWindow", "Resume", Q_NULLPTR));
+        pause_btn->setText(QApplication::translate("MainWindow", "Pause", Q_NULLPTR));
+        restart_btn->setText(QApplication::translate("MainWindow", "Start", Q_NULLPTR));
+        right_btn->setText(QApplication::translate("MainWindow", "Step >", Q_NULLPTR));
     } // retranslateUi
 
 };
