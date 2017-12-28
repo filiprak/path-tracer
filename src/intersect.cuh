@@ -162,7 +162,7 @@ bool rayIntersectsKDNodeLOOP(Ray* ray,
 							float3* bary_coords,
 							Triangle*& itrg,
 							float* tmin,
-							float3* debug_mask) {
+							float3& debug_mask) {
 
 	int curr_idx = 0;
 	bool intersects = false;
@@ -171,6 +171,8 @@ bool rayIntersectsKDNodeLOOP(Ray* ray,
 	float dist = HUGE_VALF;
 	if (!testBBoxIntersection(flat_nodes[curr_idx].bbox, ray, &dist))
 		return intersects;
+	//debug
+	debug_mask *= 0.95f;
 
 	// init short stack
 	int stack_pos = -1;
@@ -223,16 +225,19 @@ bool rayIntersectsKDNodeLOOP(Ray* ray,
 			left_dist > right_dist ? (further_idx = node.left_idx) : (curr_idx = node.left_idx);
 			stack_pos++;
 			stack[stack_pos] = further_idx;
+			debug_mask *= 0.9025f;
 			continue;
 		}
 		else if (left_res) {
 			// if one of nodes was hit then go to this node: left
 			curr_idx = node.left_idx;
+			debug_mask *= 0.95f;
 			continue;
 		}
 		else if (right_res) {
 			// if one of nodes was hit then go to this node: right
 			curr_idx = node.right_idx;
+			debug_mask *= 0.95f;
 			continue;
 		}
 		else {
@@ -247,15 +252,20 @@ bool rayIntersectsKDNodeLOOP(Ray* ray,
 }
 
 __device__
-bool rayIntersectsKDNode(Ray* ray, Triangle* trs, int trg_tex, KDNode* node, float3* norm, int* mat_idx, float* tmin, float3* debug_mask) {
+bool rayIntersectsKDNode(	Ray* ray,
+							Triangle* trs,
+							int trg_tex,
+							KDNode* node,
+							float3* norm,
+							int* mat_idx,
+							float* tmin,
+							float3& debug_mask) {
 	if (node == NULL)
 		return false;
 	float t;
 	if (!testBBoxIntersection(node->bbox, ray, &t))
 		return false;
-#ifdef DEBUG_BBOXES
 	debug_mask *= 0.95f;
-#endif // DEBUG_BBOXES
 
 	bool int_left = false, int_right = false;
 	bool left = node->left != NULL, right = node->right != NULL;
@@ -316,7 +326,7 @@ bool rayIntersectsObject(Ray* ray,
 						float3* hit_point,
 						float3* hit_norm,
 						float3* bary_coords,
-						float3* debug_mask) {
+						float3& debug_mask) {
 
 	bool intersects = false;
 
@@ -397,14 +407,15 @@ __device__
 bool rayIntersectsScene(Ray* ray, Scene& scene, IntersectInfo& ii) {
 	bool intersects = false;
 	float closest_dist = HUGE_VALF;
-	float3 inters_point, inters_norm, bary_coords, debug_mask;
+	float3 inters_point, inters_norm, bary_coords;
+	float3 debug_mask = make_float3(1.0f);
 
 	for (int i = 0; i < scene.num_wobjects; ++i) {
 		const WorldObject* obj = &(scene.dv_wobjects_ptr[i]);
 		const Material* i_mat = &(obj->materials[0]);
 		Triangle* itrg = NULL;
 
-		if (rayIntersectsObject(ray, obj, i_mat, itrg, &inters_point, &inters_norm, &bary_coords, &debug_mask)) {
+		if (rayIntersectsObject(ray, obj, i_mat, itrg, &inters_point, &inters_norm, &bary_coords, debug_mask)) {
 			intersects = true;
 			float inters_dist = length(inters_point - ray->originPoint);
 			if (inters_dist < closest_dist) {
@@ -414,11 +425,11 @@ bool rayIntersectsScene(Ray* ray, Scene& scene, IntersectInfo& ii) {
 				ii.normal = inters_norm;
 				ii.imat = i_mat;
 				ii.bary_coords = bary_coords;
-				ii.debug_mask = debug_mask;
 				if (itrg != NULL)
 					ii.itrg = *itrg;
 			}
 		};
+		ii.debug_mask = debug_mask;
 	}
 	return intersects;
 }

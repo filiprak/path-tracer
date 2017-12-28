@@ -60,13 +60,13 @@ void initWorldObjSources(Scene& scene, const Json::Value& jscene) {
 			world_obj_sources.sources[obj_idx].type = SphereObj;
 
 			Material msphere;
-			msphere.norm_color = resolveFloat3(jobj["material"]["Ka"]);
-			msphere.color = 255.0f * msphere.norm_color;
+			msphere.color = resolveFloat3(jobj["material"]["Kd"]);
 			msphere.cuda_texture_obj = -1;
 			msphere.type = resolveMatType(jobj["material"]["type"]);
 			msphere.emittance = resolveFloat3(jobj["material"]["Ke"]);
 			msphere.reflect_factor = resolveFloat(jobj["material"]["d"]);
 			msphere.refract_index = resolveFloat(jobj["material"]["Ni"]);
+			msphere.sharpness = clamp(resolveFloat(jobj["material"]["Ns"]) / 1000.0f, 0.0f, 1.0f);
 
 			SphereObjInfo* sinfo = (SphereObjInfo*)malloc(sizeof(SphereObjInfo));
 			sinfo->material = msphere;
@@ -201,7 +201,7 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 	{
 		aiMaterial* material = aiscene->mMaterials[i];
 
-		// parse name, convention name_of_material.type_of_material, example: metal.reflective, sun.luminescent
+		// parse name, convention name_of_material.type_of_material, example: metal.spec, sun.lumi
 		// if no dot provided in name or not valid name specified, then DefaultMaterial is used
 		aiString name;
 		material->Get(AI_MATKEY_NAME, name);
@@ -213,31 +213,26 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 
 		// load material properties
 		/* mapping mtl values on Material attributes:
-		 * Ka = color
+		 * Kd = color
 		 * Ke = emitance
 		 * d = reflect_factor
 		 * Ni = refract_index
+		 * Ns = sharpness
 		 */
-		aiColor3D Ka, Kd, Ke;
-		int shadingModel;
+		aiColor3D Kd, Ke;
 		float d, Ni, Ns;
 		aiString texture_path;
 
 		printf("  Loading material[%d]: name: %s, type: %s\n", i, name.C_Str(), mat_type.c_str());
 		REPORT(info("  Loading material[%d]: name: %s, type: %s", i, name.C_Str(), mat_type.c_str()));
 
-		material->Get(AI_MATKEY_COLOR_AMBIENT, Ka);
 		material->Get(AI_MATKEY_COLOR_DIFFUSE, Kd);
 		material->Get(AI_MATKEY_COLOR_EMISSIVE, Ke);
 		material->Get(AI_MATKEY_REFRACTI, Ni);
-		material->Get(AI_MATKEY_SHADING_MODEL, shadingModel);
 		material->Get(AI_MATKEY_SHININESS, Ns);
 		material->Get(AI_MATKEY_OPACITY, d);
 		// assimp error fix with Ns value
 		Ns /= 4.0f;
-		printf("   illum:      %d\n", shadingModel);
-		printf("       d:      %f\n", d);
-		printf("      Ns:      %f\n", Ns);
 		
 		mat_ptr[i].cuda_texture_obj = -1;
 		int num_tex_ambient = material->GetTextureCount(aiTextureType_AMBIENT);
@@ -263,46 +258,21 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 		}
 		if (mat_ptr[i].cuda_texture_obj < 0 && num_tex_ambient + num_tex_diffuse + num_tex_emissive > 0) {
 			printf("    Warning: texture load failed\n");
-			REPORT(warning("    Warning: texture load failed"));
+			REPORT(warning("    Warning: texture load failed: %s", texture_path.C_Str()));
 		}
 		
-		mat_ptr[i].norm_color = make_float3(Kd.r, Kd.g, Kd.b);
-		mat_ptr[i].color = 255.0f * make_float3(Kd.r, Kd.g, Kd.b);
+		mat_ptr[i].type = resolveMatType(mat_type);
+		mat_ptr[i].color = make_float3(Kd.r, Kd.g, Kd.b);
 		mat_ptr[i].emittance = make_float3(Ke.r, Ke.g, Ke.b);
 		mat_ptr[i].reflect_factor = d;
 		mat_ptr[i].refract_index = Ni;
+		mat_ptr[i].sharpness = clamp(Ns / 1000.0f, 0.0f, 1.0f);
 		
-		// switch material type
-		if (shadingModel == aiShadingMode_Flat || shadingModel == 0) {
-			mat_ptr[i].type = Diffuse;
-		}
-		else if (	shadingModel == aiShadingMode_Gouraud ||
-					shadingModel == aiShadingMode_Phong ||
-					shadingModel == aiShadingMode_Toon ||
-					shadingModel == aiShadingMode_CookTorrance) {
-			mat_ptr[i].type = Specular;
-			mat_ptr[i].reflect_factor = 0.66f;
-		}
-		else if (	shadingModel == aiShadingMode_Blinn ||
-					shadingModel == aiShadingMode_OrenNayar ||
-					shadingModel == aiShadingMode_Minnaert ||
-					shadingModel == aiShadingMode_Fresnel) {
-			mat_ptr[i].type = Transparent;
-		}
-		else if (shadingModel == aiShadingMode_NoShading) {
-			mat_ptr[i].type = Luminescent;
-		}
-		else {
-			// default material
-			mat_ptr[i].type = Diffuse;
-			mat_ptr[i].norm_color = make_float3(0.75f);
-			mat_ptr[i].color = 255.0f * mat_ptr[i].norm_color;
-		}
-		
-		/*printf("    Ka: [%.1f,%.1f,%.1f]\n    Ke: [%.1f,%.1f,%.1f]\n    d: %f, Ni: %f\n",
-			mat_ptr[i].norm_color.x, mat_ptr[i].norm_color.y, mat_ptr[i].norm_color.z,
+		printf("    enum-type: %d\n    color: [%.1f,%.1f,%.1f]\n    emit: [%.1f,%.1f,%.1f]\n    reflect: %f, refract: %f, sharp: %f\n",
+			mat_ptr[i].type,
+			mat_ptr[i].color.x, mat_ptr[i].color.y, mat_ptr[i].color.z,
 			mat_ptr[i].emittance.x, mat_ptr[i].emittance.y, mat_ptr[i].emittance.z,
-			mat_ptr[i].reflect_factor, mat_ptr[i].refract_index);*/
+			mat_ptr[i].reflect_factor, mat_ptr[i].refract_index, mat_ptr[i].sharpness);
 	}
 	return mat_ptr;
 }
@@ -350,7 +320,7 @@ Triangle* loadTriangles(const aiScene* aiscene,
 	Triangle* dv_tr_ptr = NULL;
 
 	int loaded_trgs = 0;
-	for (int m = 0; m < aiscene->mNumMeshes; m++)
+	for (unsigned m = 0; m < aiscene->mNumMeshes; m++)
 	{
 		aiMesh* mesh = aiscene->mMeshes[m];
 
@@ -408,7 +378,7 @@ Triangle* loadTriangles(const aiScene* aiscene,
 		}
 		// load tex coords from 0 channel - currently only one channel supported
 		if (mesh->HasTextureCoords(0)) {
-			for (int i = loaded_trgs; i < loaded_trgs + mesh->mNumFaces; ++i) {
+			for (unsigned i = loaded_trgs; i < loaded_trgs + mesh->mNumFaces; ++i) {
 				const aiFace& face = mesh->mFaces[i - loaded_trgs];
 				const aiVector3D& ta = mesh->mTextureCoords[0][face.mIndices[0]];
 				const aiVector3D& tb = mesh->mTextureCoords[0][face.mIndices[1]];
@@ -483,14 +453,14 @@ bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 	}
 
 	if (aiscene->HasTextures()) {
-		for (int i = 0; i < aiscene->mNumTextures; i++)
+		for (unsigned i = 0; i < aiscene->mNumTextures; i++)
 		{
 			const aiTexture* aitex = aiscene->mTextures[i];
 			printf(" Loading texture[%d]: %s %dx%d\n", i, aitex->achFormatHint, aitex->mWidth, aitex->mHeight);
 			REPORT(info(" Loading texture[%d]: %s %dx%d", i, aitex->achFormatHint, aitex->mWidth, aitex->mHeight));
-			for (int x = 0; x < aitex->mWidth; x++)
+			for (unsigned x = 0; x < aitex->mWidth; x++)
 			{
-				for (int y = 0; y < aitex->mHeight; y++)
+				for (unsigned y = 0; y < aitex->mHeight; y++)
 				{
 					const aiTexel& tex = aitex->pcData[(aitex->mHeight) * y + x];
 				}

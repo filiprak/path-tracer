@@ -41,6 +41,7 @@ void Camera::init(const Json::Value& jcam) {
 	projection.gamma_corr = 0.5f;
 
 	preview_mode = true;
+	aabb_mode = false;
 	texture_enabled = false;
 	changed = false;
 	max_ray_bounces = MAX_NUM_RAY_BOUNCES;

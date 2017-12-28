@@ -28,16 +28,20 @@ float resolveFloat(const Json::Value& jval) {
 
 MaterialType resolveMatType(const Json::Value& jval) {
 	std::string t = jval.asString();
-	if (!t.compare("diffuse")) {
+	return resolveMatType(t);
+}
+
+MaterialType resolveMatType(const std::string& t) {
+	if (!t.compare("diff")) {
 		return Diffuse;
 	}
-	else if (!t.compare("reflective")) {
+	else if (!t.compare("spec")) {
 		return Specular;
 	}
-	else if (!t.compare("refractive")) {
+	else if (!t.compare("trans")) {
 		return Transparent;
 	}
-	else if (!t.compare("luminescent")) {
+	else if (!t.compare("lumi")) {
 		return Luminescent;
 	}
 	else return Diffuse;

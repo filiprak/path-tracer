@@ -8,6 +8,7 @@
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
 
+#include "cuda_gl_interop.h"
 
 class PreviewGLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
@@ -30,11 +31,13 @@ private:
 	QOpenGLBuffer* m_indices;
 
 	QOpenGLBuffer* m_pbo;
+
     QOpenGLShaderProgram m_program;
     QOpenGLTexture *m_texture;
 
 	void initShader();
 	void initPBO(int, int);
+	void swapPBOs();
 	void deletePBO();
 	void initVAO();
 	void imageTextureInit(int, int);
@@ -42,9 +45,6 @@ private:
 
 	void initNativeGL();
 	void cleanupNativeGL();
-
-private slots:
-	void aboutToResize_slot();
 
 public slots:
 	void refresh(int, double);

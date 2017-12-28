@@ -3,10 +3,12 @@
 #include "sceneloaderthread.h"
 #include "scenestate.h"
 #include "ui_mainwindow.h"
+#include "qtconfig.h"
 
 #include <QCloseEvent>
 #include <QFileDialog>
 #include <QProgressDialog>
+#include <QDateTime>
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -22,7 +24,18 @@ MainWindow::MainWindow(QWidget *parent) :
 		Qt::QueuedConnection);
 	connect(ui->autosave_checkbox, SIGNAL(stateChanged(int)), this, SLOT(toggle_saveiters(int)));
 	ui->save_iters->setEnabled(ui->autosave_checkbox->isChecked());
+
+	// create output images folder
+	if(!QDir(AUTOSAVE_IMG_FOLDER).exists())
+		QDir().mkdir(AUTOSAVE_IMG_FOLDER);
 }
+
+MainWindow::~MainWindow()
+{
+	delete cuda_thread;
+	delete ui;
+}
+
 
 void MainWindow::toggle_saveiters(int state)
 {
@@ -41,32 +54,46 @@ void MainWindow::closeEvent(QCloseEvent *Event)
     Event->accept();
 }
 
-void MainWindow::showEvent(QShowEvent *Event)
+void MainWindow::load_scene_from_file(QString src_path)
 {
-	// default scene load
 	LoadDialog ldial(this);
-	SceneLoaderThread slthread("..\\..\\scenes\\scene_teapot.json", ldial.getLogger());
+	SceneLoaderThread slthread(src_path, ldial.getLogger());
 	ldial.setWorkerThread(&slthread);
 	ldial.exec();
 	if (!slthread.isFinished())
 		slthread.wait();
 	ldial.accept();
-	Camera cam = sceneState.clone().camera;
-	ui->previewGLWidget->reloadTexture(cam.projection.width, cam.projection.height);
+	Scene scene = sceneState.clone();
+	ui->previewGLWidget->reloadTexture(scene.camera.projection.width, scene.camera.projection.height);
 
-	Event->accept();
-}
+	// load scene settings to gui
+	ui->x_spinbox->setValue((double)scene.camera.position.x);
+	ui->y_spinbox->setValue((double)scene.camera.position.y);
+	ui->z_spinbox->setValue((double)scene.camera.position.z);
 
-MainWindow::~MainWindow()
-{
-	delete cuda_thread;
-    delete ui;
+	ui->hang_spinbox->setValue((double)scene.camera.h_ang);
+	ui->vang_spinbox->setValue((double)scene.camera.v_ang);
+
+	ui->prev_checkbox->setChecked(scene.camera.preview_mode);
+	ui->aabb_checkbox->setChecked(scene.camera.preview_mode);
+	ui->text_checkbox->setChecked(scene.camera.texture_enabled);
+
+	ui->gamm_spinbox->setValue((double)scene.camera.projection.gamma_corr);
+	ui->maxd_spinbox->setValue(scene.camera.max_ray_bounces);
 }
 
 void MainWindow::update_stats(int iter, double time)
 {
 	ui->lcdNumber->display(iter);
 	ui->iter_label->setText(QString::asprintf("Iteration(%.3fs)", (float)time));
+
+	if (ui->autosave_checkbox->isChecked() && ((iter % (ui->save_iters->value())) == 0 || iter  == 1) && iter > 0) {
+		// autosave image
+		QDateTime dt = QDateTime::currentDateTime();
+		QString file_name = QString(AUTOSAVE_IMG_FOLDER) + "/" + ui->fname_lineedit->text() + "_" + dt.toString("dd-MM-yyyy") +
+			"_" + QString::number(iter) + "spp.png";
+		(ui->previewGLWidget->grabFramebuffer()).save(file_name, "png");
+	}
 }
 
 void MainWindow::on_actionSettings_triggered()
@@ -105,32 +132,12 @@ void MainWindow::on_actionAbout_triggered()
 
 void MainWindow::on_actionLoad_Scene_triggered()
 {
-	
-	/*if (cuda_thread && cuda_thread->isRunning()) {
-		QMessageBox aboutBox(this);
-		aboutBox.setWindowTitle("Scene loading");
-		aboutBox.setIcon(QMessageBox::Icon::Critical);
-		aboutBox.setText("Rendering in progress.\nPlease stop rendering to load new scene.");
-		aboutBox.setStandardButtons(QMessageBox::Close);
-		aboutBox.setDefaultButton(QMessageBox::Close);
-		aboutBox.exec();
-		return;
-	}*/
-
     QString sceneFilename = QFileDialog::getOpenFileName(this,
         "Open scene descripion file", "", "Json Files (*.json);;All Files (*)");
     if (!sceneFilename.isEmpty()) {
 		stop_rendering();
         // load scene file
-		LoadDialog ldial(this);
-		SceneLoaderThread slthread(sceneFilename, ldial.getLogger());
-		ldial.setWorkerThread(&slthread);
-		ldial.exec();
-		if (!slthread.isFinished())
-			slthread.wait();
-		ldial.accept();
-		Camera cam = sceneState.clone().camera;
-		ui->previewGLWidget->reloadTexture(cam.projection.width, cam.projection.height);
+		load_scene_from_file(sceneFilename);
     }
 }
 
@@ -138,10 +145,9 @@ void MainWindow::on_fsave_btn_clicked()
 {
     QString defaultFilename = ui->fname_lineedit->text();
     QString sceneFilename = QFileDialog::getSaveFileName(this,
-        "Save result image", defaultFilename, "PNG (*.png);;JPEG (*.jpg);;All Files (*)");
+        "Save result image", defaultFilename, "PNG (*.png);;JPEG (*.jpg);;BMP (*.bmp);;All Files (*)");
     if (!sceneFilename.isEmpty()) {
-        //@todo: save output image
-        
+		(ui->previewGLWidget->grabFramebuffer()).save(sceneFilename);
     }
 }
 
@@ -161,6 +167,7 @@ void MainWindow::stop_rendering()
 			cuda_thread->wait();
 		cuda_thread->resetFlags();
 		emit cuda_thread->finishedIteration(0, 0.0);
+		ui->restart_btn->setText("Start");
 
 		msg.close();
 	}
@@ -181,7 +188,7 @@ void MainWindow::on_pause_btn_clicked()
 
 void MainWindow::on_restart_btn_clicked()
 {
-	if (cuda_thread) {
+	if (cuda_thread && sceneState.isLoaded()) {
 		if (cuda_thread->isRunning()) {
 			stop_rendering();
 			ui->restart_btn->setText("Start");
@@ -195,7 +202,7 @@ void MainWindow::on_restart_btn_clicked()
 
 void MainWindow::on_right_btn_clicked()
 {
-	if (cuda_thread) {
+	if (cuda_thread && sceneState.isLoaded()) {
 		cuda_thread->step();
 		ui->restart_btn->setText("Stop");
 	}
@@ -203,55 +210,55 @@ void MainWindow::on_right_btn_clicked()
 
 void MainWindow::on_maxd_spinbox_valueChanged(int arg1)
 {
-    //@todo change camera max depth val
+	sceneState.updateMaxRayBnc(arg1);
 }
 
 void MainWindow::on_aajitter_spinbox_valueChanged(double arg1)
 {
-    //@todo change camera aa jitter
+	sceneState.updateAajitter((float)arg1);
 }
 
 void MainWindow::on_gamm_spinbox_valueChanged(double arg1)
 {
-    //@todo change image gamma correction
+	sceneState.updateGamma((float)arg1);
 }
 
 void MainWindow::on_text_checkbox_stateChanged(int arg1)
 {
-    //@todo toggle textures
+	sceneState.toggleTextures((bool)arg1);
 }
 
 void MainWindow::on_aabb_checkbox_stateChanged(int arg1)
 {
-    //@todo aabb boxes preview mode
+	sceneState.toggleAABBmode((bool)arg1);
 }
 
 void MainWindow::on_prev_checkbox_stateChanged(int arg1)
 {
-    //@todo toggle preview mode
+	sceneState.togglePrevMode((bool)arg1);
 }
 
 void MainWindow::on_hang_spinbox_valueChanged(double arg1)
 {
-
+	sceneState.setCamHang((float)arg1);
 }
 
 void MainWindow::on_vang_spinbox_valueChanged(double arg1)
 {
-
+	sceneState.setCamVang((float)arg1);
 }
 
 void MainWindow::on_x_spinbox_valueChanged(double arg1)
 {
-
+	sceneState.setCamPositionX((float)arg1);
 }
 
 void MainWindow::on_y_spinbox_valueChanged(double arg1)
 {
-
+	sceneState.setCamPositionY((float)arg1);
 }
 
 void MainWindow::on_z_spinbox_valueChanged(double arg1)
 {
-
+	sceneState.setCamPositionZ((float)arg1);
 }

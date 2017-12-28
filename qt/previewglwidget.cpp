@@ -13,11 +13,7 @@ const char* shaderFragDefault = "shaders/default.frag";
 
 PreviewGLWidget::PreviewGLWidget(QWidget* parent)
 	: m_pbo(0), m_texcoords(0), m_indices(0),
-	m_vertices(0), m_texture(0), QOpenGLWidget(parent)
-{
-	connect(this, SIGNAL(aboutToResize()), this, SLOT(aboutToResize_slot()), Qt::QueuedConnection);
-	printf("GLsize: %d, %d\n", width(), height());
-}
+	m_vertices(0), m_texture(0), QOpenGLWidget(parent) {}
 
 PreviewGLWidget::~PreviewGLWidget()
 {
@@ -56,19 +52,16 @@ void PreviewGLWidget::initShader() {
 		printf("PreviewGLWidget::initShader(): compile vert: %s\n", m_program.log().toStdString().c_str());
 		close();
 	}
-
 	// Compile fragment shader
 	if (!m_program.addShaderFromSourceFile(QOpenGLShader::Fragment, shaderFragDefault)) {
 		printf("PreviewGLWidget::initShader(): compile frag: %s\n", m_program.log().toStdString().c_str());
 		close();
 	}
-
 	// Link shader pipeline
 	if (!m_program.link()) {
 		printf("PreviewGLWidget::initShader() link: %s\n", m_program.log().toStdString().c_str());
 		close();
 	}
-
 	// Bind shader pipeline for use
 	if (!m_program.bind()) {
 		printf("PreviewGLWidget::initShader() bind: %s\n", m_program.log().toStdString().c_str());
@@ -87,7 +80,6 @@ void PreviewGLWidget::initPBO(int w, int h) {
 	cudaOk(cudaGraphicsGLRegisterBuffer(&viewPBO_cuda, m_pbo->bufferId(), cudaGraphicsMapFlagsWriteDiscard));
 
 	size_t num_bytes;
-
 	// map buffer object
 	cudaOk(cudaGraphicsMapResources(1, &viewPBO_cuda));
 	cudaOk(cudaGraphicsResourceGetMappedPointer((void**)&pbo_dptr, &num_bytes, viewPBO_cuda));
@@ -96,8 +88,7 @@ void PreviewGLWidget::initPBO(int w, int h) {
 
 void PreviewGLWidget::deletePBO() {
 	if (m_pbo) {
-		// unmap buffer object
-		cudaOk(cudaGraphicsUnmapResources(1, &viewPBO_cuda, 0));
+		cudaOk(cudaGraphicsUnmapResources(1, &viewPBO_cuda));
 		cudaOk(cudaGraphicsUnregisterResource(viewPBO_cuda));
 
 		m_pbo->bind();
@@ -163,7 +154,7 @@ void PreviewGLWidget::imageTextureInit(int w, int h) {
 	m_texture->create();
 	assert(w > 0 && h > 0);
 	m_texture->setSize(w, h);
-	m_texture->setMinMagFilters(QOpenGLTexture::Nearest, QOpenGLTexture::Nearest);
+	m_texture->setMinMagFilters(QOpenGLTexture::Linear, QOpenGLTexture::Linear);
 	m_texture->setFormat(QOpenGLTexture::RGBA8_UNorm);
 	m_texture->allocateStorage(QOpenGLTexture::BGRA, QOpenGLTexture::UInt8);
 }
@@ -172,8 +163,6 @@ void PreviewGLWidget::initializeGL()
 {
 	initializeOpenGLFunctions();
 
-	// Setup view rendering
-	printf("GLsize: %d, %d\n", width(), height());
 	// compile and link shader
 	initShader();
 
@@ -183,17 +172,9 @@ void PreviewGLWidget::initializeGL()
 	imageTextureInit(32, 32);
 }
 
-//debug - testing
-void PreviewGLWidget::aboutToResize_slot()
-{
-	//deletePBO();
-	//initPBO(width(), height());
-	printf("aboutToResize_slot: %d, %d\n", width(), height());
-}
-
 void PreviewGLWidget::resizeGL(int w, int h)
 {
-	printf("resizeGL: %d, %d\n", w, h);
+	printf("PreviewGLWidget::resizeGL(): %dx%d\n", w, h);
 }
 
 void PreviewGLWidget::paintGL()
@@ -201,13 +182,12 @@ void PreviewGLWidget::paintGL()
 	m_pbo->bind();
 	m_texture->bind();
 
-	printf("GL error: %d\n", glGetError());
-	printf("GLsize: %d, %d\n", width(), height());
-
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_texture->width(), m_texture->height(), GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+	m_texture->release();
+	m_pbo->release();
 }
 
 void PreviewGLWidget::refresh(int iter, double time) {

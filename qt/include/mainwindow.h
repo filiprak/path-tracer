@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QMessageBox>
+#include <QString>
 #include "cudarunthread.h"
 
 
@@ -69,9 +70,9 @@ private:
 	CudaRunThread* cuda_thread;
 
     void closeEvent(QCloseEvent *Event);
-	void showEvent(QShowEvent *Event);
     bool askForClosing();
 	void stop_rendering();
+	void load_scene_from_file(QString src_path);
 };
 
 #endif // MAINWINDOW_H

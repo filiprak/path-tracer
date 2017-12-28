@@ -3,7 +3,6 @@
 #include "scenestate.h"
 #include "cudaUtility.h"
 #include <time.h>
-#include <thread>
 
 
 CudaRunThread::CudaRunThread()
@@ -17,20 +16,24 @@ void CudaRunThread::run() {
 	kernelInit(sceneState.clone());
 
 	// run path tracing iterations on CUDA
-	for (int i = 0; i < 5000; i++)
+	int i = 1;
+	while (i < 40001)
 	{
 		mutex.lock();
-		clock_t begin = clock();
+		
+		Scene scene = sceneState.clone();
+		sceneState.cameraChanged(false, &i);
 
 		// run CUDA kernels
-		runCUDA(pbo_dptr, sceneState.clone(), i);
+		clock_t begin = clock();
+		runCUDA(pbo_dptr, scene, i);
 		// blocked until kernels are finished
-
 		clock_t end = clock();
+
 		double time_perf = (double)(end - begin) / CLOCKS_PER_SEC;
 
-		emit finishedIteration(i + 1, time_perf);
-		printf("runCUDA(iteration: %d) time performance: %.3f s\n", i, time_perf);
+		emit finishedIteration(i, time_perf);
+		//printf("runCUDA(iteration: %d) time performance: %.3f s\n", i, time_perf);
 
 		if (checkCudaError("runCUDA()")) {
 			mutex.unlock();
@@ -45,6 +48,8 @@ void CudaRunThread::run() {
 			break;
 		}
 		mutex.unlock();
+
+		++i;
 	}
 
 	kernelCleanUp();

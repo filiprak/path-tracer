@@ -12,9 +12,11 @@
 
 // cuda pbo image resource
 cudaGraphicsResource* viewPBO_cuda;
-uchar4 *pbo_dptr = NULL;
 
+// device ptrs
+uchar4 *pbo_dptr = NULL;
 float4* device_accum_image = NULL;
+
 
 __host__
 void kernelInit(const Scene& scene)
@@ -74,7 +76,6 @@ cudaError_t kernelMain(uchar4* pbo, Scene& scene, int iter)
 		int jitterHash = wang_hash(iter);
 
 		runPathTracing(scene, iterHash, jitterHash);
-		cudaDeviceSynchronize();
 		checkCudaError("run runPathTracing()");
 	}
 
@@ -86,10 +87,6 @@ cudaError_t kernelMain(uchar4* pbo, Scene& scene, int iter)
 														iter,
 														device_accum_image);
 	checkCudaError("run sendImageToPBO<<<>>>()");
-    
-    cudaDeviceSynchronize();
-	checkCudaError("kernelMain<<< >>>()");
-
     return cudaGetLastError();
 }
 

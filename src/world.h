@@ -27,7 +27,7 @@ typedef enum {
 
 typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 	MaterialType type;
-	float3 color, norm_color;  // mtl: Ka
+	float3 color;  // mtl: Ka, Kd, Ks
 	int cuda_texture_obj;
 
 	// for light materials

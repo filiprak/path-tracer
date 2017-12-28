@@ -36,6 +36,7 @@ typedef struct {
 
 	// mesh preview mode
 	bool preview_mode;
+	bool aabb_mode;
 	bool texture_enabled;
 
 	// max ray bounces number

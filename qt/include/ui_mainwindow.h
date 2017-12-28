@@ -172,6 +172,7 @@ public:
         hang_spinbox = new QDoubleSpinBox(cam_groupbox);
         hang_spinbox->setObjectName(QStringLiteral("hang_spinbox"));
         hang_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
+		hang_spinbox->setDecimals(2);
         hang_spinbox->setMinimum(-360);
         hang_spinbox->setMaximum(360);
         hang_spinbox->setSingleStep(5);
@@ -186,7 +187,7 @@ public:
         vang_spinbox = new QDoubleSpinBox(cam_groupbox);
         vang_spinbox->setObjectName(QStringLiteral("vang_spinbox"));
         vang_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
-        vang_spinbox->setDecimals(1);
+        vang_spinbox->setDecimals(2);
         vang_spinbox->setMinimum(-360);
         vang_spinbox->setMaximum(360);
         vang_spinbox->setSingleStep(5);
@@ -214,20 +215,24 @@ public:
         horizontalLayout->setContentsMargins(11, 11, 11, 11);
         horizontalLayout->setObjectName(QStringLiteral("horizontalLayout"));
         horizontalLayout->setContentsMargins(0, 0, 0, 0);
+
         x_spinbox = new QDoubleSpinBox(cpos_xyz);
         x_spinbox->setObjectName(QStringLiteral("x_spinbox"));
         x_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
-        x_spinbox->setInputMethodHints(Qt::ImhNone);
-        x_spinbox->setReadOnly(false);
-        x_spinbox->setButtonSymbols(QAbstractSpinBox::UpDownArrows);
-        x_spinbox->setAccelerated(false);
-        x_spinbox->setProperty("showGroupSeparator", QVariant(false));
-        x_spinbox->setDecimals(2);
         x_spinbox->setMinimum(-999.99);
         x_spinbox->setMaximum(999.99);
         x_spinbox->setValue(0);
 
         horizontalLayout->addWidget(x_spinbox);
+
+		y_spinbox = new QDoubleSpinBox(cpos_xyz);
+		y_spinbox->setObjectName(QStringLiteral("y_spinbox"));
+		y_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
+		y_spinbox->setMinimum(-999.99);
+		y_spinbox->setMaximum(999.99);
+		y_spinbox->setValue(0);
+
+		horizontalLayout->addWidget(y_spinbox);
 
         z_spinbox = new QDoubleSpinBox(cpos_xyz);
         z_spinbox->setObjectName(QStringLiteral("z_spinbox"));
@@ -236,16 +241,7 @@ public:
         z_spinbox->setMaximum(999.99);
         z_spinbox->setValue(0);
 
-        horizontalLayout->addWidget(z_spinbox);
-
-        y_spinbox = new QDoubleSpinBox(cpos_xyz);
-        y_spinbox->setObjectName(QStringLiteral("y_spinbox"));
-        y_spinbox->setCursor(QCursor(Qt::PointingHandCursor));
-        y_spinbox->setMinimum(-999.99);
-        y_spinbox->setMaximum(999.99);
-
-        horizontalLayout->addWidget(y_spinbox);
-
+		horizontalLayout->addWidget(z_spinbox);
 
         formLayout_2->setWidget(1, QFormLayout::FieldRole, cpos_xyz);
 
@@ -466,7 +462,7 @@ public:
         image_groupbox->setTitle(QApplication::translate("MainWindow", "Image", Q_NULLPTR));
         gamm_label->setText(QApplication::translate("MainWindow", "Gamma Corr. Exp", Q_NULLPTR));
         fname_label->setText(QApplication::translate("MainWindow", "File name", Q_NULLPTR));
-        fname_lineedit->setText(QApplication::translate("MainWindow", "image.png", Q_NULLPTR));
+        fname_lineedit->setText(QApplication::translate("MainWindow", "image", Q_NULLPTR));
         autosave_checkbox->setText(QApplication::translate("MainWindow", "Autosave", Q_NULLPTR));
         every_label->setText(QApplication::translate("MainWindow", "Every", Q_NULLPTR));
         save_iters->setSuffix(QApplication::translate("MainWindow", " iterations", Q_NULLPTR));

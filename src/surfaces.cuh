@@ -8,14 +8,27 @@
 #include "constants.h"
 #include "config.h"
 
-// Helper function to calculate random ray direction inside specified cone
+// Helper function to calculate random ray direction inside specified cone of directions
+// Uses random cosine weighed cone sampling
 __device__
 inline void rand_cone_Dir(	float3* result,
-							const float3& ray_dir,
-							const float3& surf_normal,
-							float cone_sharpness,
+							const float3& cone_axis,
+							float ang_max_dev,
 							curandState* curand_s) {
-	//todo
+#define EPS		0.0001
+	float3 u = normalize(cone_axis.x != 0.0f || cone_axis.y != 0.0f ?
+		(make_float3(cone_axis.y, -cone_axis.x, 0.0f)) : 
+		(make_float3(0.0f, cone_axis.z, -cone_axis.y)));
+	float3 v = normalize(cross(u, cone_axis));
+
+	const float h = __sinf(ang_max_dev) * curand_uniform(curand_s);
+	const float r = __fsqrt_rn(h);
+	const float theta = PI_X2_f * curand_uniform(curand_s);
+
+	float sinth, costh;
+	__sincosf(theta, &sinth, &costh);
+
+	*result = normalize(sinth * r * u + costh * r * v + __fsqrt_rn(1.0f - h + EPS) * cone_axis);
 }
 
 
@@ -25,19 +38,9 @@ inline void Diffuse_BRDF(	Ray* in_ray,
 							const float3& surf_normal,
 							const float3& inters_point,
 							curandState* curand_s) {
-
-	float r1 = PI_X2_f * curand_uniform(curand_s);
-	float r2 = curand_uniform(curand_s);
-	float r2s = __fsqrt_rn(r2);
-
-	float3 u = normalize(cross((fabsf(surf_normal.x) > .1 ? make_float3(0, 1, 0) : make_float3(1, 0, 0)), surf_normal));
-	float3 v = cross(surf_normal, u);
-
-	float sinr1, cosr1;
-	__sincosf(r1, &sinr1, &cosr1);
-
-	init_ray(in_ray, inters_point + surf_normal * 0.00005f,
-		normalize(u * cosr1 * r2s + v * sinr1*r2s + surf_normal * __fsqrt_rn(1 - r2)));
+	float3 rand_dir;
+	rand_cone_Dir(&rand_dir, surf_normal, PI_D2_f, curand_s);
+	init_ray(in_ray, inters_point + surf_normal * 0.00005f, rand_dir);
 }
 
 // DIFFUSE-REFLECTIVE SURFACE // perfect reflective + cosine weighed Lambertian model
@@ -52,36 +55,31 @@ inline void Specular_Diffuse_BRDF(	Ray* in_ray,
 	float3 new_orig = inters_point + surf_normal * 0.0001f;
 	float r2 = curand_uniform(curand_s);
 	if (r2 > refl_factor) {
-		// ray scattering
-		float r1 = PI_X2_f * curand_uniform(curand_s);
-		float r2s = __fsqrt_rn(r2);
-
-		float3 u = normalize(cross((fabsf(surf_normal.x) > .1 ? make_float3(0, 1, 0) : make_float3(1, 0, 0)), surf_normal));
-		float3 v = cross(surf_normal, u);
-
-		float sinr1, cosr1;
-		__sincosf(r1, &sinr1, &cosr1);
-
-		init_ray(in_ray, new_orig, normalize(u * cosr1 * r2s + v * sinr1*r2s + surf_normal * __fsqrt_rn(1 - r2)));
+		// diffuse rayy scatter
+		Diffuse_BRDF(in_ray, surf_normal, inters_point, curand_s);
 	}
 	else {
 		// glossy reflection with sharpness
-		init_ray(in_ray, new_orig, normalize(reflect(in_ray->direction, surf_normal)));
+		const float max_cone_ang = PI_D2_f * (1.0f - sharpness);
+		const float scatt_ang = PI_D2_f - acosf(fabs(dot(in_ray->direction, surf_normal)));
+		float3 rand_dir;
+		rand_cone_Dir(&rand_dir, reflect(in_ray->direction, surf_normal), fmin(max_cone_ang, scatt_ang), curand_s);
+		init_ray(in_ray, new_orig, rand_dir);
 	}
 	
 }
 
-// REFRACTIVE SURFACE // perfect reflective + fresnel effects by shortened Schlick Approximation
+// REFRACTIVE SURFACE // perfect reflective + fresnel effects by Schlick Approximation
 #define REFL_BIAS		0.05f
 #define REFL_BIAS_LOW	0.0005f
 __device__
-inline void Refractive_BRDF(Ray* in_ray,
-							float refract_index,
-							float refl_factor,
-							float3& mask,
-							const float3& surf_normal,
-							const float3& inters_point,
-							curandState* curand_s) {
+inline void Refractive_BRDF(	Ray* in_ray,
+								float refract_index,
+								float refl_factor,
+								float3& mask,
+								const float3& surf_normal,
+								const float3& inters_point,
+								curandState* curand_s) {
 
 	// check if ray is inside refrected object
 	float3 ray_oriented_norm = dot(surf_normal, in_ray->direction) < 0 ? surf_normal : -(float3)surf_normal;
@@ -95,7 +93,7 @@ inline void Refractive_BRDF(Ray* in_ray,
 	float cos_ray = dot(in_ray->direction, ray_oriented_norm); // cosine of ray and oriented normal angle
 	float cos2refr = 1.0f - nn_ratio * nn_ratio * (1.0f - cos_ray * cos_ray);
 
-	if (cos2refr < 0.0f) // total internal reflection 
+	if (cos2refr < 0.0f) // total internal reflection
 	{
 		init_ray(in_ray, inters_point + ray_oriented_norm * REFL_BIAS,
 			reflect(in_ray->direction, ray_oriented_norm));
@@ -115,7 +113,7 @@ inline void Refractive_BRDF(Ray* in_ray,
 			
 		float pow = 1.0f - (ray_outside ? -cos_ray : dot(trans_ray_dir, surf_normal));
 		// shortened Schlick Approximation
-		float Reflectance = Refl0 + (1.0f - Refl0)*pow*pow*pow;
+		float Reflectance = Refl0 + (1.0f - Refl0)*pow*pow*pow*pow*pow;
 		// scale energy -
 		// due to splitting ray energy on two rays and losing one of them
 		// it had to be scaled to keep conservation of energy law
