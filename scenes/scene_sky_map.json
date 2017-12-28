@@ -1,0 +1,92 @@
+{
+	"camera":{
+		"position":		[0.0, 1, 6],
+		"direction": 	[0.0, 0.0, -1.0],
+		"up": 			[0.0, 1.0, 0.0],
+		
+		"screenDist": 		3.0,
+		"screenHeight": 	2.0,
+		"pixelWidth": 		800,
+		"pixelHeight": 		600
+	},
+  
+  
+  
+	"objects": [
+  
+	{
+		"type":				"sphere",
+		"render": true,
+		"radius": 			1,
+		"position": 		[2, 1, 0],
+		"material": {
+			"type":			"spec",
+			"Kd":			[1, 1, 1],
+			"d":			0.9,
+			"Ni":			1.5
+		}
+	},
+	{
+		"type":				"sphere",
+		"render": true,
+		"radius": 			1,
+		"position": 		[-2, 1, 0],
+		"material": {
+			"type":			"diff",
+			"Kd":			[1, 1, 1],
+			"Ke":			[2000],
+			"d":			0.9,
+			"Ni":			1.5
+		}
+	},
+	{
+		"type":				"sphere",
+		"render": true,
+		"radius": 			1,
+		"position": 		[0, 1, 2],
+		"material": {
+			"type":			"trans",
+			"Kd":			[1, 1, 1],
+			"Ke":			[1],
+			"d":			0.9,
+			"Ni":			1.5
+		}
+	},
+	
+	{
+		"type":				"sphere",
+		"render": false,
+		"radius": 			3,
+		"position": 		[0, 16, 0],
+		"material": {
+			"type":			"lumi",
+			"Kd":			[1, 1, 1],
+			"Ke":			[10],
+			"d":			0.9,
+			"Ni":			1.5
+		}
+	},
+	
+	{
+		"type":"mesh",
+		"render": true,
+		"src":"./scenes/sky_map/sky_cubemap.obj",
+		"transform": [
+			{ "translate": [0, 70, 0] },
+			{ "scale": [100] },
+			{ "xrotate": [180, [ 1,0,0 ]] },
+			{ "xtranslate": [-0.5, -0.5, -0.5] }
+			
+		]
+	},
+	{
+		"type":"mesh",
+		"render": true,
+		"src":"./scenes/sky_map/plane_stones.obj",
+		"transform": [
+			{ "scale": [50, 1 , 50] }
+		]
+	}
+	
+  ]
+}

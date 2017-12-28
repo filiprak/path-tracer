@@ -1,0 +1,4 @@
+# materials.mtl materials
+
+newmtl pyramid.diff
+	Kd 0.7 0.7 0.7

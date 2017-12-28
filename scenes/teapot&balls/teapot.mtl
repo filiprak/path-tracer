@@ -1,0 +1,7 @@
+# Blender MTL File: 'None'
+# Material Count: 1
+
+newmtl teapot.spec
+	Kd 1.0 1.0 1.0
+	d 0.8
+	Ns 995

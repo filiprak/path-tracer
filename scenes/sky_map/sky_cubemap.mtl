@@ -1,0 +1,10 @@
+# Blender MTL File: 'sky_cubemap.blend'
+# Material Count: 1
+
+newmtl sky.lumi
+Ns 0
+Ke 1.0 1.0 1.0
+Kd 1.0 1.0 1.0
+d 1
+illum 9
+map_Kd .\scenes\sky_map\sea_cbm.jpg

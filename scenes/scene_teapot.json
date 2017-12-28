@@ -1,0 +1,101 @@
+{
+	"camera":{
+		"position":		[0.0, 3.5, 19.9],
+		"direction": 	[0.0, 0.0, -1.0],
+		"up": 			[0.0, 1.0, 0.0],
+		
+		"screenDist": 		3.0,
+		"screenHeight": 	2.0,
+		"pixelWidth": 		1024,
+		"pixelHeight": 		768
+	},
+  
+  
+  
+	"objects": [
+  
+	{
+		"type":				"sphere",
+		"render":true,
+		"radius": 			7,
+		"position": 		[0, 16.5, -5],
+		"material": {
+			"type":			"lumi",
+			"Kd":			[1, 1, 1],
+			"Ke":			[2]
+		}
+	},
+	
+	{
+		"type":				"sphere",
+		"render":true,
+		"radius": 			7,
+		"position": 		[0, 16.5, 5],
+		"material": {
+			"type":			"lumi",
+			"Kd":			[1, 1, 1],
+			"Ke":			[2]
+		}
+	},
+	
+	{
+		"type":"sphere",
+		"render":true,
+		"radius": 1.0,
+		"position": [0, 1.0, 5],
+		"material": {
+			"type":"trans",
+			"Kd":[1, 1, 1],
+			"d": 0.1,
+			"Ni": 1.5
+		}
+	},
+	{
+		"type":"sphere",
+		"render":true,
+		"radius": 1.6,
+		"position": [3, 1.6, 3],
+		"material": {
+			"type":"spec",
+			"Kd":[0, 0.5, 1],
+			"d": 0.8,
+			"Ns": 990
+		}
+	},
+	{
+		"type":"sphere",
+		"render":true,
+		"radius": 0.8,
+		"position": [1.9, 0.8, 6],
+		"material": {
+			"type":"spec",
+			"Kd":[1, 0.5, 0],
+			"d": 0.8,
+			"Ns": 750
+		}
+	},
+	
+	
+	
+	{
+		"type":"mesh",
+		"render":true,
+		"src":"./scenes/teapot&balls/cornell_box.obj",
+		"transform": [
+			{ "rotate": [-0, [0,1,0]] },
+			{ "translate": [0,0,0] }, 
+			{ "scale": [2, 1, 2] }
+		]
+	},
+	{
+		"type":"mesh",
+		"render":true,
+		"src":"./scenes/teapot&balls/teapot.obj",
+		"transform": [
+			{ "rotate": [10, [0,1,0]] },
+			{ "translate": [0,0,0] }, 
+			{ "scale": [1] }
+		]
+	}
+  ]
+}
