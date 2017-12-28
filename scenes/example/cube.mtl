@@ -1,0 +1,8 @@
+# cube.mtl materials
+	
+newmtl cube.spec
+	Kd 0.95 0.95 0.4
+	d 1.0
+	
+newmtl cube.diff
+	Kd 0.95 0.95 0.4

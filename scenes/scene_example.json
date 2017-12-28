@@ -1,0 +1,58 @@
+{
+	"camera":{
+		"position":		[0.0, 4.5, 20],
+		"direction": 	[0.0, 0.0, -1.0],
+		"up": 			[0.0, 1.0, 0.0],
+		
+		"screenDist": 		3.0,
+		"screenHeight": 	2.0,
+		"pixelWidth": 		320,
+		"pixelHeight": 		240
+	},
+  
+	"objects": [
+  
+	{
+		"type":				"sphere",
+		"render":true,
+		"radius": 			7,
+		"position": 		[0, 16.5, 0],
+		"material": {
+			"type":			"lumi",
+			"Kd":			[1, 1, 1],
+			"Ke":			[2]
+		}
+	},
+	{
+		"type":"sphere",
+		"render":true,
+		"radius": 1.6,
+		"position": [2.1, 1.6, 1],
+		"material": {
+			"type":"diff",
+			"Kd":[0, 0.5, 1]
+		}
+	},
+
+	{
+		"type":"mesh",
+		"render":true,
+		"src":"./scenes/example/cornell_box.obj",
+		"transform": [
+			{ "rotate": [-0, [0,1,0]] },
+			{ "translate": [0,0,2.5] }, 
+			{ "scale": [1, 1, 2] }
+		]
+	},
+	{
+		"type":"mesh",
+		"render":true,
+		"src":"./scenes/example/cube.obj",
+		"transform": [
+			{ "rotate": [35, [0,1,0]] },
+			{ "translate": [-4,0,-2] }, 
+			{ "scale": [3, 4, 3] }
+		]
+	}
+  ]
+}
