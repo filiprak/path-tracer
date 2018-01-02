@@ -21,14 +21,14 @@ inline void rand_cone_Dir(	float3* result,
 		(make_float3(0.0f, cone_axis.z, -cone_axis.y)));
 	float3 v = normalize(cross(u, cone_axis));
 
-	const float h = __sinf(ang_max_dev) * curand_uniform(curand_s);
-	const float r = __fsqrt_rn(h);
+	const float r2 = __sinf(ang_max_dev) * curand_uniform(curand_s);
+	const float r = __fsqrt_rn(r2);
 	const float theta = PI_X2_f * curand_uniform(curand_s);
 
 	float sinth, costh;
 	__sincosf(theta, &sinth, &costh);
 
-	*result = normalize(sinth * r * u + costh * r * v + __fsqrt_rn(1.0f - h + EPS) * cone_axis);
+	*result = normalize(sinth * r * u + costh * r * v + __fsqrt_rn(1.0f - r2 + EPS) * cone_axis);
 }
 
 

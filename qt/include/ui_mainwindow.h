@@ -32,6 +32,7 @@
 #include <QtWidgets/QStatusBar>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
+#include <QtWidgets/QRadioButton>
 #include "previewglwidget.h"
 
 QT_BEGIN_NAMESPACE
@@ -60,7 +61,7 @@ public:
     QDoubleSpinBox *hang_spinbox;
     QLabel *vang_label;
     QDoubleSpinBox *vang_spinbox;
-    QCheckBox *aabb_checkbox;
+    QRadioButton *aabb_checkbox;
     QCheckBox *text_checkbox;
     QWidget *cpos_xyz;
     QHBoxLayout *horizontalLayout;
@@ -68,7 +69,8 @@ public:
     QDoubleSpinBox *z_spinbox;
     QDoubleSpinBox *y_spinbox;
     QLabel *aajitter_label;
-    QCheckBox *prev_checkbox;
+    QRadioButton *prev_checkbox;
+	QRadioButton *norm_checkbox;
     QDoubleSpinBox *aajitter_spinbox;
     QGroupBox *image_groupbox;
     QFormLayout *formLayout_3;
@@ -195,18 +197,18 @@ public:
 
         formLayout_2->setWidget(4, QFormLayout::FieldRole, vang_spinbox);
 
-        aabb_checkbox = new QCheckBox(cam_groupbox);
+        aabb_checkbox = new QRadioButton(cam_groupbox);
         aabb_checkbox->setObjectName(QStringLiteral("aabb_checkbox"));
         aabb_checkbox->setCursor(QCursor(Qt::PointingHandCursor));
 
-        formLayout_2->setWidget(7, QFormLayout::FieldRole, aabb_checkbox);
+        formLayout_2->setWidget(8, QFormLayout::FieldRole, aabb_checkbox);
 
         text_checkbox = new QCheckBox(cam_groupbox);
         text_checkbox->setObjectName(QStringLiteral("text_checkbox"));
         text_checkbox->setCursor(QCursor(Qt::PointingHandCursor));
         text_checkbox->setChecked(true);
 
-        formLayout_2->setWidget(8, QFormLayout::FieldRole, text_checkbox);
+        formLayout_2->setWidget(9, QFormLayout::FieldRole, text_checkbox);
 
         cpos_xyz = new QWidget(cam_groupbox);
         cpos_xyz->setObjectName(QStringLiteral("cpos_xyz"));
@@ -250,11 +252,17 @@ public:
 
         formLayout_2->setWidget(5, QFormLayout::LabelRole, aajitter_label);
 
-        prev_checkbox = new QCheckBox(cam_groupbox);
+        prev_checkbox = new QRadioButton(cam_groupbox);
         prev_checkbox->setObjectName(QStringLiteral("prev_checkbox"));
         prev_checkbox->setCursor(QCursor(Qt::PointingHandCursor));
 
-        formLayout_2->setWidget(6, QFormLayout::FieldRole, prev_checkbox);
+        formLayout_2->setWidget(7, QFormLayout::FieldRole, prev_checkbox);
+
+		norm_checkbox = new QRadioButton(cam_groupbox);
+		norm_checkbox->setObjectName(QStringLiteral("norm_checkbox"));
+		norm_checkbox->setCursor(QCursor(Qt::PointingHandCursor));
+
+		formLayout_2->setWidget(6, QFormLayout::FieldRole, norm_checkbox);
 
         aajitter_spinbox = new QDoubleSpinBox(cam_groupbox);
         aajitter_spinbox->setObjectName(QStringLiteral("aajitter_spinbox"));
@@ -454,6 +462,7 @@ public:
         pos_label->setText(QApplication::translate("MainWindow", "Position", Q_NULLPTR));
         hang_label->setText(QApplication::translate("MainWindow", "HAngle", Q_NULLPTR));
         vang_label->setText(QApplication::translate("MainWindow", "VAngle", Q_NULLPTR));
+		norm_checkbox->setText(QApplication::translate("MainWindow", "Path Tracing", Q_NULLPTR));
         aabb_checkbox->setText(QApplication::translate("MainWindow", "AABBoxes Preview mode", Q_NULLPTR));
         text_checkbox->setText(QApplication::translate("MainWindow", "Render textures", Q_NULLPTR));
         x_spinbox->setPrefix(QString());
