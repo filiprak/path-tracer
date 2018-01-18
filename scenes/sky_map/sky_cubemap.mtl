@@ -7,4 +7,4 @@ Ke 1.0 1.0 1.0
 Kd 1.0 1.0 1.0
 d 1
 illum 9
-map_Kd .\scenes\sky_map\sea_cbm.jpg
+map_Kd .\textures\sea_cbm.jpg

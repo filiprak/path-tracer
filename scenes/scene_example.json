@@ -6,8 +6,8 @@
 		
 		"screenDist": 		3.0,
 		"screenHeight": 	2.0,
-		"pixelWidth": 		320,
-		"pixelHeight": 		240
+		"pixelWidth": 		640,
+		"pixelHeight": 		480
 	},
   
 	"objects": [

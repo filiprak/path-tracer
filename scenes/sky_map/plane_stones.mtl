@@ -8,4 +8,4 @@ Kd 1.0 1.0 1.0
 Ks 0.8 0.8 0.8
 d 1
 illum 2
-map_Kd .\scenes\sky_map\stones_tex.jpg
+map_Kd .\textures\stones_tex.jpg
