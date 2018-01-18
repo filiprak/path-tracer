@@ -7,31 +7,13 @@
 
 #include "qt5gui.h"
 
-std::string input_file;
+int cuda_device_id = -1;
 
 
 void printProgramConfig() {
 	printSep();
-	printf("Running configuration:\n\n");
-#ifdef DEBUG_BBOXES
-	printf("Debug AABB boxes mode: enabled\n");
-#else
-	printf("Debug AABB boxes mode: disabled\n");
-#endif
 #ifdef USE_KD_TREES
-	printf("Use KD-Trees mode: enabled\n");
-#else
-	printf("Use KD-Trees mode: disabled\n");
-#endif
-#ifdef USE_TRIANGLE_TEXTURE_MEM
-	printf("Store triangles data in CUDA texture memory: enabled\n");
-#else
-	printf("Store triangles data in CUDA texture memory: disabled\n");
-#endif
-#ifdef PRECOMPUTE_TRI_EDGES
-	printf("Precomputing triangle edges: enabled\n");
-#else
-	printf("Precomputing triangle edges: disabled\n");
+	printf("Use KD-Trees mode enabled\n");
 #endif
 	printSep();
 }
@@ -46,12 +28,20 @@ int detectCUDAdevice() {
 		exit(EXIT_FAILURE);
 	}
 
-	int cuda_device_id = 0;
+	cuda_device_id = 0;
 	cudaSetDevice(cuda_device_id);
+#ifdef MAX_STACK_CUDA_SIZE
+	if (!checkCudaError("cudaSetDevice()")) {
+		cudaDeviceSetLimit(cudaLimitStackSize, (size_t)MAX_STACK_CUDA_SIZE);
+		if (checkCudaError("Unable to set CUDA device stack size.\n"))
+			exit(EXIT_FAILURE);
+	}
+#endif
 	return dvNum;
 }
 
 int main(int argc, char* argv[]) {
+	printProgramConfig();
 	// run Qt
 	return runQt5(argc, argv);
 }

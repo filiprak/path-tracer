@@ -10,14 +10,6 @@
 #include "surfaces.cuh"
 #include "config.h"
 
-#include <string>
-
-__host__ __device__
-void print_4path(float3* path) {
-	printf("{Wektor((%.2f,%.2f,%.2f),(%.2f,%.2f,%.2f)),\nWektor((%.2f,%.2f,%.2f),(%.2f,%.2f,%.2f)),\nWektor((%.2f,%.2f,%.2f),(%.2f,%.2f,%.2f)),\nWektor((%.2f,%.2f,%.2f),(%.2f,%.2f,%.2f))}\n\n",
-		path[0].x, path[0].y, path[0].z, path[1].x, path[1].y, path[1].z, path[2].x, path[2].y, path[2].z, path[3].x, path[3].y, path[3].z,
-		path[4].x, path[4].y, path[4].z, path[5].x, path[5].y, path[5].z, path[6].x, path[6].y, path[6].z, path[7].x, path[7].y, path[7].z);
-}
 
 __device__
 float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
@@ -81,7 +73,7 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 		if (scene.camera.texture_enabled && mat->cuda_texture_obj > -1) {
 			float2 texuv = ii.bary_coords.x * ii.itrg.tx_a + ii.bary_coords.y * ii.itrg.tx_b + ii.bary_coords.z * ii.itrg.tx_c;
 			float4 texel = tex2D<float4>((cudaTextureObject_t)mat->cuda_texture_obj, texuv.x, texuv.y);
-			mask *= 1.0f * make_float3(texel.x, texel.y, texel.z) + 0.0f * mat->color;
+			mask *= make_float3(texel.x, texel.y, texel.z) * mat->color;
 
 		} else // mask light with current object colour
 			mask *= mat->color;
@@ -91,5 +83,5 @@ float3 gatherRadiance(Ray& prim_ray, Scene& scene, curandState* curand_s)
 			return mask * mat->emittance;
 	}
 
-	return radiance;//mask * make_float3(255, 255, 255);
+	return radiance;
 }

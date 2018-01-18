@@ -13,16 +13,9 @@
 // KD-tree traversing, default size is too small for large KD-trees
 #define MAX_STACK_CUDA_SIZE					1024 * 50 // Bytes
 
-// Renders AABB boxes of scene objects using simple shading
-//#define DEBUG_BBOXES
-
 // Use KD-tree for fast triangle mesh intersection detecting
 #define USE_KD_TREES
+#define MAX_KD_LEAF_TRGS				16
+
+// use iteration instead recursion in kd trees traversal
 #define USE_SHORT_STACK_LOOP
-
-// Use CUDA texture memory to store triangles data
-//#define USE_TRIANGLE_TEXTURE_MEM
-
-// Precompute triangle edges, triangle is stored then as (a, b - a, c - a)
-// when normally it is stored as (a, b, c)
-#define PRECOMPUTE_TRI_EDGES

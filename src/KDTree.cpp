@@ -3,6 +3,7 @@
 #include "cudaUtility.h"
 #include "world.h"
 #include "world_load.h"
+#include "config.h"
 #include <vector>
 
 
@@ -89,22 +90,15 @@ KDNode* buildKDTree(Triangle* trg_src, int* trg_idxs, int num_trs, int depth, in
 	node->left_idx = -1;
 	node->right_idx = -1;
 	num_nodes++;
-	/*printf("    Depth: %d, Node: [triangles: %d] ", depth, num_trs);
-	printf("idx: [");
-	for (int i = 0; i < num_trs; i++)
-	{
-		printf("%d,", trg_idxs[i]);
-	}
-	printf("]\n");*/
+
 	// initial cases
 	if (num_trs == 0)
 		return node;
 
 	if (num_trs == 1) {
 		node->bbox = makeTrgBBox(trg_src[trg_idxs[0]]);
-		node->left = NULL;// (KDNode*)malloc(sizeof(KDNode));
-		node->right = NULL;//(KDNode*)malloc(sizeof(KDNode));
-		//node->left->trg_idxs = node->left->trg_idxs = NULL;
+		node->left = NULL;
+		node->right = NULL;
 		return node;
 	}
 
@@ -138,7 +132,7 @@ KDNode* buildKDTree(Triangle* trg_src, int* trg_idxs, int num_trs, int depth, in
 	int left_size = trg_left_idxs.size();
 	int right_size = trg_right_idxs.size();
 
-	if (left_size > 16) {
+	if (left_size > MAX_KD_LEAF_TRGS) {
 		int* left_idxs = (int*)malloc(left_size * sizeof(int));
 		memcpy(left_idxs, trg_left_idxs.data(), left_size * sizeof(int));
 		node->left = buildKDTree(trg_src, left_idxs, left_size, depth + 1, num_nodes, max_depth);

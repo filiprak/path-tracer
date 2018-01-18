@@ -83,12 +83,8 @@ typedef struct alignMem(GLOB_MEM_ALIGNMENT) {
 	Triangle* triangles;
 	int num_triangles;
 
-	// Id of texture where triangles data is stored
-	cudaTextureObject_t triangles_tex;
-	float4* triangle_tex_data;
-
-	KDNode* kdroot;
-	KDNode* flat_kd_root;
+	KDNode* kdroot; // hierarchical kd tree
+	KDNode* flat_kd_root; // array kd tree
 
 } MeshGeometryData;
 

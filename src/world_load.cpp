@@ -489,7 +489,6 @@ bool loadTriangleMeshObj(void* objInfo, WorldObject& result) {
 	int all_trgs_count;
 	gptr->triangles = loadTriangles(aiscene, info->transform, inv_transform, all_trgs_count, trg_host_ptr, dv_tex_triangle_data);
 	gptr->num_triangles = all_trgs_count;
-	gptr->triangles_tex = loadTrianglesToCudaTexture(dv_tex_triangle_data, all_trgs_count);
 	int trgs_mem_size = all_trgs_count * sizeof(Triangle) / 1024;
 	printf("  Loaded %d triangles in %d meshes. (Glob. memory taken: %d KB)\n", gptr->num_triangles, aiscene->mNumMeshes, trgs_mem_size);
 	REPORT(info("  Loaded %d triangles in %d meshes. (Glob. memory taken: %d KB)", gptr->num_triangles, aiscene->mNumMeshes, trgs_mem_size));
@@ -566,6 +565,7 @@ bool loadSceneWorldObjects(Scene& scene, const Json::Value& jscene, DialogLogger
 	printf("Sizeof: %s = %d\n", "Triangle", sizeof(Triangle));
 	printf("Sizeof: %s = %d\n", "Material", sizeof(Material));
 	printSep();
+
 	try {
 		// setup logger
 		reporter = logger;

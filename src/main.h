@@ -19,3 +19,5 @@ typedef void* dv_ptr;
 void printSep();
 void printProgramConfig();
 int detectCUDAdevice();
+
+extern int cuda_device_id;

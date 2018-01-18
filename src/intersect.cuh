@@ -86,42 +86,6 @@ bool testSphereIntersection(Ray* ray, const WorldObject* obj, float3* hit_point,
 	return true;
 }
 
-/*__device__
-bool testTriangleMeshIntersection(Ray* ray, WorldObject* obj, TriangleMesh* imesh, float3* hit_point, float3* hit_norm) {
-	MeshGeometryData* gdata = (MeshGeometryData*)obj.geometry_data;
-
-	int inters_mesh_idx;
-	float closest_dist = HUGE_VALF;
-	bool intersects = false;
-	bool culling = false;
-
-	for (int t = 0; t < gdata->num_triangles; ++t) {
-		Triangle& trg = gdata->triangles[t];
-		if (culling && dot(ray->direction, trg.norm_a) > 0) // skip triangles turned back to ray
-			continue;
-
-		float inters_dist;
-		bool triangle_intersects = rayIntersectsTriangle(ray,
-			trg.a,
-			trg.b,
-			trg.c,
-			inters_dist);
-
-		if (triangle_intersects && !intersects) {
-			intersects = true;
-		}
-		// check if point is closest to viewer
-		if (triangle_intersects && inters_dist < closest_dist) {
-			closest_dist = inters_dist;
-			hit_norm = trg.norm_a;
-		}
-	}
-	if (intersects) {
-		hit_point = ray->originPoint + closest_dist * ray->direction;
-	}
-	return intersects;
-}*/
-
 /* based on: https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection */
 __device__
 bool testBBoxIntersection(BBox& bbox, Ray* ray, float* tmin) {
@@ -156,13 +120,13 @@ bool testBBoxIntersection(BBox& bbox, Ray* ray, float* tmin) {
 
 // Iteration loop version instead of recursive ray KDNode intersection
 __device__
-bool rayIntersectsKDNodeLOOP(Ray* ray,
-							Triangle* trs,
-							KDNode* flat_nodes,
-							float3* bary_coords,
-							Triangle*& itrg,
-							float* tmin,
-							float3& debug_mask) {
+bool rayIntersectsKDNodeLOOP(	Ray* ray,
+								Triangle* trs,
+								KDNode* flat_nodes,
+								float3* bary_coords,
+								Triangle*& itrg,
+								float* tmin,
+								float3& debug_mask) {
 
 	int curr_idx = 0;
 	bool intersects = false;
@@ -281,21 +245,6 @@ bool rayIntersectsKDNode(	Ray* ray,
 		bool intersects = false;
 		for (int i = 0; i < node->num_trgs; i++)
 		{
-#ifdef USE_TRIANGLE_TEXTURE_MEM
-			int trg_i = 6 * i;
-			float4 a = tex1Dfetch<float4>(trg_tex, trg_i);
-			float4 b = tex1Dfetch<float4>(trg_tex, trg_i + 1);
-			float4 c = tex1Dfetch<float4>(trg_tex, trg_i + 2);
-			if (rayIntersectsTriangle(ray, make_float3(a.x, a.y, a.z),
-				make_float3(b.x, b.y, b.z),
-				make_float3(c.x, c.y, c.z), t)) {
-				intersects = true;
-				if (t < tmin) {
-					tmin = t;
-					n_idx = trg_i;
-				}
-			}
-#else
 			Triangle& trg = trs[node->trg_idxs[i]];
 			//if (dot(ray->direction, trg.norm_a) >= 0) continue;
 			if (rayIntersectsTriangle(ray, &(trg.a), &(trg.e1), &(trg.e2), &t, &u, &v)) {
@@ -306,14 +255,7 @@ bool rayIntersectsKDNode(	Ray* ray,
 					*mat_idx = trg.material_idx;
 				}
 			}
-#endif
 		}
-#ifdef USE_TRIANGLE_TEXTURE_MEM
-		if (intersects) {
-			float4 n = tex1Dfetch<float4>(trg_tex, n_idx + 3);
-			norm = make_float3(n.x, n.y, n.z);
-		}
-#endif
 		return intersects;
 	}
 }
@@ -349,28 +291,7 @@ bool rayIntersectsObject(Ray* ray,
 		int n_idx; //normal index
 		for (int i = 0; i < gdata->num_triangles; i++)
 		{
-			
-	#ifdef USE_TRIANGLE_TEXTURE_MEM
-			int trg_i = 6 * i;
-			float4 a = tex1Dfetch<float4>(gdata->triangles_tex, trg_i);
-			float4 b = tex1Dfetch<float4>(gdata->triangles_tex, trg_i + 1);
-			float4 c = tex1Dfetch<float4>(gdata->triangles_tex, trg_i + 2);
-	#else
-				//printf("[%f,%f,%f,%f]\n", a.x, a.y, a.z, a.w);
 			Triangle& trg = gdata->triangles[i];
-	#endif
-				//if (dot(ray->direction, trg.norm_a) >= 0) continue;
-	#ifdef USE_TRIANGLE_TEXTURE_MEM
-			if (rayIntersectsTriangle(ray, make_float3(a.x, a.y, a.z),
-				make_float3(b.x, b.y, b.z),
-				make_float3(c.x, c.y, c.z), t, u, v)) {
-				intersects = true;
-				if (t < *tmin) {
-					*tmin = t;
-					n_idx = trg_i;
-				}
-			}
-	#else
 			if (rayIntersectsTriangle(ray, &(trg.a), &(trg.b), &(trg.c), &t, &u, &v)) {
 				intersects = true;
 				if (t < *tmin) {
@@ -378,8 +299,6 @@ bool rayIntersectsObject(Ray* ray,
 					n_idx = i;
 				}
 			}
-		
-	#endif
 		}
 #endif
 		if (intersects)
