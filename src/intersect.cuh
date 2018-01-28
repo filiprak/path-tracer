@@ -26,11 +26,8 @@ typedef struct {
 __device__
 bool rayIntersectsTriangle(Ray* ray, float3* va, float3* e1, float3* e2, float* res_dist, float* ru, float* rv)
 {
-	float3 h;
-	float a;
-
-	h = cross(ray->direction, *e2);
-	a = dot(*e1, h);
+	float3 h = cross(ray->direction, *e2);
+	float a = dot(*e1, h);
 	
 	if (a > -EPSILON && a < EPSILON)
 		return false;
@@ -46,7 +43,6 @@ bool rayIntersectsTriangle(Ray* ray, float3* va, float3* e1, float3* e2, float* 
 	if (v < 0.0 || u + v > 1.0)
 		return false;
 
-	// At this stage we can compute t to find out where the intersection point is on the line.
 	float t = f * dot(*e2, q);
 	if (t > EPSILON) // ray intersection
 	{
@@ -55,7 +51,7 @@ bool rayIntersectsTriangle(Ray* ray, float3* va, float3* e1, float3* e2, float* 
 		*rv = v;
 		return true;
 	}
-	// This means that there is a line intersection but not a ray intersection.
+
 	return false;
 }
 
@@ -153,7 +149,7 @@ bool rayIntersectsKDNodeLOOP(	Ray* ray,
 			for (int i = 0; i < node.num_trgs; i++)
 			{
 				Triangle& trg = trs[node.trg_idxs[i]];
-				//if (dot(ray->direction, trg.norm_a) >= 0) continue;
+
 				if (rayIntersectsTriangle(ray, &(trg.a), &(trg.e1), &(trg.e2), &t, &u, &v)) {
 					intersects = true;
 					if (t < *tmin) {

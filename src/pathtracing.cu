@@ -90,15 +90,6 @@ void generatePrimaryRays(const Camera cam, Ray* rays, float3* pix_midpoints)
 
 		// store middle pixel point
 		pix_midpoints[index] = cam.position + screenDistanceVec + pixVector;
-		/*if ((x == 0 && y == 0) ||
-			(x == 0 && y == cam.projection.height - 1) ||
-			(x == cam.projection.width - 1 && y == 0) ||
-			(x == cam.projection.width - 1 && y == cam.projection.height - 1)) {
-
-			printf("\nRay(%d, %d) = [%.9f, %.9f, %.9f]\n  pixVector = [%f, %f, %f]\n\n",
-				x, y, rays[index].direction.x, rays[index].direction.y, rays[index].direction.z,
-				pixVector.x, pixVector.y, pixVector.z);
-		}*/
 	}
 }
 
@@ -129,17 +120,11 @@ void jitterPrimaryRays(Scene scene, float3* pix_midpoints, Ray* out_rays, int se
 		// calculate jitter (jitter bounds are <-pix_side, pix_side>)
 		float2 jitter = (cam.projection.pixel_size.x) * cam.projection.aa_jitter * 
 			make_float2(curand_uniform(&curand_state) - 0.5f, curand_uniform(&curand_state) - 0.5f);
+
 		// change primary ray direction adding the jitter
 		float3 jitter_dir = normalize(pix_midpoints[index] + jitter.x * cam.right + jitter.y * cam.up - cam.position);
-		//float3 jitter_orig = cam.position + jitter.x * cam.right + jitter.y * cam.up;
 		change_ray_dir(out_rays[index], jitter_dir);
-		//out_rays[index].originPoint = jitter_orig;
-		/*if (index == 0) {
-			printf("pix side: %f\n", cam.projection.pixel_size.x);
-			printf(" mid point [0] = [%f, %f, %f]\n", pix_midpoints[0].x, pix_midpoints[0].y, pix_midpoints[0].z);
-			printf("        jitter = [%f, %f]\n", jitter.x, jitter.y);
-			printf("jitter ray [0] = [%f, %f, %f]\n\n", out_rays[0].direction.x, out_rays[0].direction.y, out_rays[0].direction.z);
-		}*/
+
 	}
 }
 

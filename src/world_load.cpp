@@ -277,31 +277,6 @@ Material* loadMaterialsToHost(const aiScene* aiscene) {
 	return mat_ptr;
 }
 
-cudaTextureObject_t loadTrianglesToCudaTexture(float4 *dev_triangles_ptr, unsigned int num_triangles)
-{
-	// create cuda resource object
-	cudaResourceDesc resDesc;
-	memset(&resDesc, 0, sizeof(resDesc));
-	resDesc.resType = cudaResourceTypeLinear;
-	resDesc.res.linear.devPtr = dev_triangles_ptr;
-	resDesc.res.linear.desc = cudaCreateChannelDesc<float4>();
-	resDesc.res.linear.sizeInBytes = num_triangles * 6 * sizeof(float4);
-
-	cudaTextureDesc texDesc;
-	memset(&texDesc, 0, sizeof(texDesc));
-	texDesc.readMode = cudaReadModeElementType;
-	texDesc.filterMode = cudaFilterModePoint;
-	texDesc.addressMode[0] = cudaAddressModeWrap;
-	texDesc.normalizedCoords = false;
-
-	// create texture object
-	cudaTextureObject_t tex = 0;
-	cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL);
-	dv_textures.push_back(tex);
-	checkCudaError("loadTrianglesToCudaTexture()");
-	return tex;
-}
-
 Triangle* loadTriangles(const aiScene* aiscene,
 						glm::mat4 transform,
 						glm::mat4 inv_transform,
@@ -555,15 +530,6 @@ WorldObject* loadWorldObjects() {
 }
 
 bool loadSceneWorldObjects(Scene& scene, const Json::Value& jscene, DialogLogger* logger) {
-	printSep();
-	printf("Memory struct sizes:\n");
-	printf("Sizeof: %s = %d\n", "WorldObject", sizeof(WorldObject));
-	printf("Sizeof: %s = %d\n", "KDNode", sizeof(KDNode));
-	printf("Sizeof: %s = %d\n", "BBox", sizeof(BBox));
-	printf("Sizeof: %s = %d\n", "MeshGeometryData", sizeof(MeshGeometryData));
-	printf("Sizeof: %s = %d\n", "SphereGeometryData", sizeof(SphereGeometryData));
-	printf("Sizeof: %s = %d\n", "Triangle", sizeof(Triangle));
-	printf("Sizeof: %s = %d\n", "Material", sizeof(Material));
 	printSep();
 
 	try {

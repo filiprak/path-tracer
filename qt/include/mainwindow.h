@@ -48,11 +48,11 @@ private slots:
 
     void on_text_checkbox_stateChanged(int arg1);
 
-    void on_aabb_checkbox_stateChanged(bool checked);
+    void aabb_checkbox_stateChanged(bool checked);
 
-	void on_prev_checkbox_stateChanged(bool checked);
+	void prev_checkbox_stateChanged(bool checked);
 
-	void on_norm_checkbox_stateChanged(bool checked);
+	void norm_checkbox_stateChanged(bool checked);
 
     void on_hang_spinbox_valueChanged(double arg1);
 

@@ -38,7 +38,7 @@ void kernelCleanUp()
 
 //Kernel that writes the image to the OpenGL PBO directly.
 __global__
-void writeImageToPBO(uchar4* pbo, float gamma, int width, int height, int iter, float4* image) {
+void writeImageToPBO(uchar4* pbo, float gamma, int width, int height, int iter, float4* accimage) {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
@@ -47,9 +47,9 @@ void writeImageToPBO(uchar4* pbo, float gamma, int width, int height, int iter, 
 
 		float inv_iter = 1 / (float)iter;
 		pbo[index].w = 0.0f;
-		pbo[index].x = 255.0f * powf(clamp((image[index].x) * inv_iter, 0.0f, 1.0f), gamma);
-		pbo[index].y = 255.0f * powf(clamp((image[index].y) * inv_iter, 0.0f, 1.0f), gamma);
-		pbo[index].z = 255.0f * powf(clamp((image[index].z) * inv_iter, 0.0f, 1.0f), gamma);
+		pbo[index].x = 255.0f * powf(clamp((accimage[index].x) * inv_iter, 0.0f, 1.0f), gamma);
+		pbo[index].y = 255.0f * powf(clamp((accimage[index].y) * inv_iter, 0.0f, 1.0f), gamma);
+		pbo[index].z = 255.0f * powf(clamp((accimage[index].z) * inv_iter, 0.0f, 1.0f), gamma);
 	}
 }
 
@@ -72,8 +72,8 @@ cudaError_t kernelMain(uchar4* pbo, Scene& scene, int iter)
 	}
 
 	{ // pathtrace
-		int iterHash = wang_hash(utilhash(iter));
-		int jitterHash = wang_hash(iter);
+		int iterHash = wang_hash(iter);
+		int jitterHash = wang_hash(wang_hash(iter));
 
 		runPathTracing(scene, iterHash, jitterHash);
 		checkCudaError("run runPathTracing()");
@@ -92,12 +92,6 @@ cudaError_t kernelMain(uchar4* pbo, Scene& scene, int iter)
 
 
 void runCUDA(uchar4 *pbo_dptr, Scene& scene, int iter) {
-	/*uchar4 *pbo_dptr = NULL;
-	size_t num_bytes;
-
-	// map buffer object
-	cudaOk(cudaGraphicsMapResources(1, &viewPBO_cuda));
-	cudaOk(cudaGraphicsResourceGetMappedPointer((void**)&pbo_dptr, &num_bytes, viewPBO_cuda));*/
 
 	if (pbo_dptr)
 		kernelMain(pbo_dptr, scene, iter);
@@ -106,7 +100,5 @@ void runCUDA(uchar4 *pbo_dptr, Scene& scene, int iter) {
 		checkCudaError("cudaGraphicsMapResources(), cudaGraphicsResourceGetMappedPointer()");
 	}
 
-	/*// unmap buffer object
-	cudaOk(cudaGraphicsUnmapResources(1, &viewPBO_cuda, 0));*/
 }
 

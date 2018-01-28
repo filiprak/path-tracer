@@ -23,9 +23,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(cuda_thread, SIGNAL(finishedIteration(int, double)), this, SLOT(update_stats(int, double)),
 		Qt::QueuedConnection);
 	connect(ui->autosave_checkbox, SIGNAL(stateChanged(int)), this, SLOT(toggle_saveiters(int)));
-	connect(ui->aabb_checkbox, SIGNAL(toggled(bool)), this, SLOT(on_aabb_checkbox_stateChanged(bool)));
-	connect(ui->prev_checkbox, SIGNAL(toggled(bool)), this, SLOT(on_prev_checkbox_stateChanged(bool)));
-	connect(ui->norm_checkbox, SIGNAL(toggled(bool)), this, SLOT(on_norm_checkbox_stateChanged(bool)));
+	connect(ui->aabb_checkbox, SIGNAL(toggled(bool)), this, SLOT(aabb_checkbox_stateChanged(bool)));
+	connect(ui->prev_checkbox, SIGNAL(toggled(bool)), this, SLOT(prev_checkbox_stateChanged(bool)));
+	connect(ui->norm_checkbox, SIGNAL(toggled(bool)), this, SLOT(norm_checkbox_stateChanged(bool)));
 	ui->save_iters->setEnabled(ui->autosave_checkbox->isChecked());
 
 	// create output images folder
@@ -231,17 +231,17 @@ void MainWindow::on_text_checkbox_stateChanged(int arg1)
 	sceneState.toggleTextures((bool)arg1);
 }
 
-void MainWindow::on_aabb_checkbox_stateChanged(bool checked)
+void MainWindow::aabb_checkbox_stateChanged(bool checked)
 {
 	sceneState.toggleAABBmode(checked);
 }
 
-void MainWindow::on_prev_checkbox_stateChanged(bool checked)
+void MainWindow::prev_checkbox_stateChanged(bool checked)
 {
 	sceneState.togglePrevMode(checked);
 }
 
-void MainWindow::on_norm_checkbox_stateChanged(bool checked)
+void MainWindow::norm_checkbox_stateChanged(bool checked)
 {
 	if (checked) {
 		sceneState.togglePrevMode(false);
