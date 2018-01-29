@@ -3,6 +3,7 @@
 #include "world.h"
 
 #include <qobject.h>
+#include <qmutex.h>
 
 // threadsafe scenestate object
 class SceneState : public QObject

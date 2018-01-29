@@ -82,7 +82,7 @@ inline void Refractive_BRDF(	Ray* in_ray,
 								curandState* curand_s) {
 
 	// check if ray is inside refrected object
-	float3 ray_oriented_norm = dot(surf_normal, in_ray->direction) < 0 ? surf_normal : -(float3)surf_normal;
+	float3 ray_oriented_norm = dot(surf_normal, in_ray->direction) < 0 ? surf_normal : (-1) * surf_normal;
 	bool ray_outside = dot(surf_normal, ray_oriented_norm) > 0;
 
 	// refract indices

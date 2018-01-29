@@ -79,7 +79,7 @@ void initWorldObjSources(Scene& scene, const Json::Value& jscene) {
 			world_obj_sources.sources[obj_idx].type = TriangleMeshObj;
 			TriangleMeshObjInfo* minfo = (TriangleMeshObjInfo*)malloc(sizeof(TriangleMeshObjInfo));
 			const char* src = jobj["src"].asCString();
-			strcpy_s(minfo->src_filename, src);
+			strcpy(minfo->src_filename, src);
 			
 			glm::mat4 transform;
 			// read transformations

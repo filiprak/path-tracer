@@ -41,7 +41,7 @@ QString PreviewGLWidget::getGLinfo() {
 	const GLubyte* version = glGetString(GL_VERSION);
 	const GLubyte* renderer = glGetString(GL_RENDERER);
 	char buffer[1024];
-	sprintf_s(buffer, "OpenGL version: %s\nPreview image renderer: %s\n", (const char*)version, (const char*)renderer);
+	sprintf(buffer, "OpenGL version: %s\nPreview image renderer: %s\n", (const char*)version, (const char*)renderer);
 	return QString::fromLocal8Bit(buffer);
 }
 

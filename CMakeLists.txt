@@ -22,8 +22,17 @@ list(APPEND CMAKE_LIBRARY_PATH "${EXTERNAL_LIB_PATH}")
 # Fing required packages
 
 # QT5
+# Set your qt version and configuration (example: gcc_64, msvc2015)
+set(QT_VERSION "5.10.0")
+set(QT_CONFIG "msvc2015")
+
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_PREFIX_PATH "C:\\Qt\\5.9.3\\msvc2015\\")
+# adjust smake prefix path for qt
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+	set(CMAKE_PREFIX_PATH "~/Qt${QT_VERSION}/${QT_VERSION}/${QT_CONFIG}")
+elseif(WIN32 OR WIN64)
+    set(CMAKE_PREFIX_PATH "C:\\Qt\\${QT_VERSION}\\${QT_CONFIG}\\")
+endif()
 include_directories("${QT_SRC}/include/")
 
 find_package(Qt5Core REQUIRED)
