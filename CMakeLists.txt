@@ -23,7 +23,7 @@ list(APPEND CMAKE_LIBRARY_PATH "${EXTERNAL_LIB_PATH}")
 
 # QT5
 # Set your qt version and configuration (example: gcc_64, msvc2015)
-set(QT_VERSION "5.10.0")
+set(QT_VERSION "5.9.3")
 set(QT_CONFIG "msvc2015")
 
 set(CMAKE_AUTOMOC ON)
@@ -107,12 +107,4 @@ cuda_add_executable(${CMAKE_PROJECT_NAME}
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
     ${CORELIBS}
-    )
-
-add_custom_command(
-    TARGET ${CMAKE_PROJECT_NAME}
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/shaders
-        ${CMAKE_BINARY_DIR}/shaders
     )
